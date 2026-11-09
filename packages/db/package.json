@@ -1,0 +1,30 @@
+{
+  "name": "@sw-catalog/db",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "validate": "prisma validate",
+    "migrate": "prisma migrate dev",
+    "studio": "prisma studio",
+    "import:prod": "bun run scripts/import-from-api.ts",
+    "migrate:deploy": "prisma migrate deploy",
+    "typecheck": "tsc --noEmit -p .",
+    "sync:publishers": "bun run scripts/sync-publishers.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "prisma": "^7"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7",
+    "@prisma/client": "^7",
+    "pg": "^8.23.1",
+    "@sw-catalog/shared": "workspace:*",
+    "yaml": "^2.9.1"
+  }
+}

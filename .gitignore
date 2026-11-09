@@ -1,0 +1,31 @@
+node_modules
+dist
+dist-ssr
+.astro
+coverage
+*.log
+*.local
+.env
+.env.*
+!.env.example
+!.env.sample
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# crawler working dir (clone per la vitality)
+data/
+apps/crawler/data/
+
+# output dell'indexer
+*.bulk
+
+# client Prisma generato
+packages/db/src/generated/
+
+# repository clonati dalla CI (publiccode-schema finché non è su npm)
+.deps/
+
+# CA dei certificati demo di OpenSearch, se copiata in locale
+root-ca.pem

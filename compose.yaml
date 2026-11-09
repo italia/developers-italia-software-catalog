@@ -1,0 +1,89 @@
+# Infrastruttura del monorepo: configurazione di BASE, con la sicurezza attiva.
+#
+# Da sola (`docker compose -f compose.yaml up -d`) è pensata per un server o per chi
+# riusa il monorepo: niente porte esposte, password obbligatorie, OpenSearch con il
+# security plugin e HTTPS (certificati demo dell'immagine).
+#
+# In sviluppo si usa insieme a compose.local.yaml: COMPOSE_FILE nel .env (vedi
+# .env.example) li unisce in automatico, quindi `docker compose …` e gli script
+# `bun run infra:*` caricano entrambi.
+#
+# OpenSearch, come in produzione:
+#   - anonimo  -> solo _search sull'alias del catalogo (ruolo catalog_public_read)
+#   - indexer  -> utente $OPENSEARCH_USER con i permessi per indicizzare (catalog_indexer)
+#   - admin    -> password $OPENSEARCH_INITIAL_ADMIN_PASSWORD
+# Ruoli e utenti li crea il servizio opensearch-setup (infra/opensearch/setup.sh).
+#
+# I servizi applicativi (api, crawler, indexer, …) verranno aggiunti nella Fase 7 di new-plan.md.
+
+name: sw-catalog
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-catalog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-catalog}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  opensearch:
+    image: opensearchproject/opensearch:3.9.0
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: ${OPENSEARCH_JAVA_OPTS:--Xms512m -Xmx512m}
+      # Attiva il security plugin con la configurazione demo dell'immagine (certificati
+      # self-signed) e imposta la password dell'utente admin.
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:?imposta OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      # Il catalogo legge dal browser (D2): CORS solo per la sua origine.
+      http.cors.enabled: "true"
+      http.cors.allow-origin: ${OPENSEARCH_CORS_ORIGIN:-http://localhost:3000}
+      http.cors.allow-headers: Content-Type,Authorization
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+      # Accesso anonimo in sola lettura (letto al primo avvio, vedi il file).
+      - ./infra/opensearch/security/config.yml:/usr/share/opensearch/config/opensearch-security/config.yml:ro
+    healthcheck:
+      # HTTPS nella base; HTTP se compose.local.yaml disattiva il TLS sull'interfaccia HTTP.
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsk -u "admin:$${OPENSEARCH_INITIAL_ADMIN_PASSWORD}" https://localhost:9200/_cluster/health
+          || curl -fs -u "admin:$${OPENSEARCH_INITIAL_ADMIN_PASSWORD}" http://localhost:9200/_cluster/health
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # Crea ruoli e utenti del catalogo e poi termina. Idempotente.
+  opensearch-setup:
+    image: opensearchproject/opensearch:3.9.0
+    entrypoint: ["sh", "/setup.sh"]
+    environment:
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:?imposta OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      OPENSEARCH_USER: ${OPENSEARCH_USER:-indexer}
+      OPENSEARCH_PASS: ${OPENSEARCH_PASS:?imposta OPENSEARCH_PASS}
+      OPENSEARCH_INDEX_ALIAS: ${OPENSEARCH_INDEX_ALIAS:-developers_italia_it}
+    volumes:
+      - ./infra/opensearch/setup.sh:/setup.sh:ro
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres-data:
+  opensearch-data:

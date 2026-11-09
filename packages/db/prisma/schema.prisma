@@ -1,0 +1,417 @@
+// BOZZA — Fase 1 di new-plan.md.
+//
+// Parte 1: le tabelle esistenti di developers-italia-api (Go/GORM), mappate con
+// @@map/@map sugli stessi nomi di tabelle e colonne, così la nuova API può girare
+// sul database attuale (verifica con `prisma db pull` su un dump di produzione).
+// Parte 2: le tabelle nuove (onboarding, richieste di terze parti, IndicePA).
+// Parte 3: storico/audit e accesso alla dashboard (utenti, magic link, sessioni).
+//
+// Non ancora modellato:
+//  - logs.entity è una colonna GENERATED in Postgres (GORM): Prisma non supporta
+//    le colonne generate, quindi va creata con SQL raw nella migration o calcolata nel codice.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Parte 1 — parità con developers-italia-api
+// ---------------------------------------------------------------------------
+
+model Catalog {
+  id                  String   @id
+  name                String
+  alternativeId       String?  @unique @map("alternative_id")
+  active              Boolean  @default(true)
+  publishersNamespace String?  @map("publishers_namespace")
+  /// GORM serializer:json -> array JSON salvato come testo
+  scopes              String?
+  analysis            Json?    @db.JsonB
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  sources    CatalogSource[]
+  publishers Publisher[]
+  software   Software[]
+
+  @@index([createdAt])
+  @@index([analysis], type: Gin, map: "idx_catalogs_analysis_gin")
+  @@map("catalogs")
+}
+
+model CatalogSource {
+  id        String   @id
+  /// github | gitlab | bitbucket | gitea | forgejo | json
+  driver    String?
+  url       String
+  /// GORM serializer:json -> array JSON salvato come testo (es. JSONPath per il driver json)
+  args      String?
+  catalogId String   @map("catalog_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  catalog Catalog @relation(fields: [catalogId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([driver])
+  @@index([catalogId])
+  @@index([createdAt])
+  @@map("catalog_sources")
+}
+
+model Publisher {
+  id            String   @id
+  /// NULL = catalogo root
+  catalogId     String?  @map("catalog_id")
+  email         String?
+  description   String   @unique
+  active        Boolean  @default(true)
+  /// Di solito il codice IPA
+  alternativeId String?  @unique @map("alternative_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  catalog            Catalog?            @relation(fields: [catalogId], references: [id])
+  codeHosting        CodeHosting[]
+  onboardingRequests OnboardingRequest[]
+  software           Software[]
+
+  @@index([catalogId])
+  @@index([createdAt])
+  @@map("publishers")
+}
+
+model CodeHosting {
+  id          String   @id
+  url         String   @unique
+  /// true = intera org/gruppo, false = singolo repository
+  group       Boolean  @default(true)
+  publisherId String   @map("publisher_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  publisher Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([publisherId])
+  @@index([createdAt])
+  @@map("publishers_code_hosting")
+}
+
+model Software {
+  id            String   @id
+  /// NULL = catalogo root
+  catalogId     String?  @map("catalog_id")
+  /// Novità della v2: il publisher nel cui code hosting il crawler ha trovato il repository
+  /// (non esiste nell'API Go). NULL se non è noto. Il crawler non sovrascrive un valore già
+  /// impostato; si può correggere dalla dashboard.
+  publisherId   String?  @map("publisher_id")
+  softwareUrlId String   @unique @map("software_url_id")
+  publiccodeYml String   @map("publiccode_yml")
+  active        Boolean  @default(true)
+  vitality      String?
+  analysis      Json?    @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  catalog   Catalog?      @relation(fields: [catalogId], references: [id])
+  publisher Publisher?    @relation(fields: [publisherId], references: [id], onDelete: SetNull)
+  /// URL canonico
+  url       SoftwareUrl   @relation("SoftwareMainUrl", fields: [softwareUrlId], references: [id], onDelete: NoAction)
+  /// Tutti gli URL legati al software, alias compresi (es. repo rinominati)
+  urls      SoftwareUrl[] @relation("SoftwareUrls")
+
+  thirdPartyRequests ThirdPartyRequest[]
+
+  @@index([catalogId])
+  @@index([publisherId])
+  @@index([createdAt])
+  @@index([analysis], type: Gin, map: "idx_software_analysis_gin")
+  @@map("software")
+}
+
+model SoftwareUrl {
+  id         String   @id
+  url        String   @unique
+  softwareId String   @map("software_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  mainOf   Software? @relation("SoftwareMainUrl")
+  software Software  @relation("SoftwareUrls", fields: [softwareId], references: [id], onDelete: Cascade)
+
+  @@index([softwareId])
+  @@index([createdAt])
+  @@map("software_urls")
+}
+
+model Log {
+  id         String    @id
+  message    String
+  /// Relazione polimorfica: entity_type = publishers | software | catalogs
+  entityId   String?   @map("entity_id")
+  entityType String?   @map("entity_type")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([entityId, entityType], map: "idx_log_entity")
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("logs")
+}
+
+model Webhook {
+  id         String   @id
+  url        String
+  /// Segreto per la firma HMAC-SHA256 (header X-Webhook-Signature)
+  secret     String?
+  entityId   String   @map("entity_id")
+  entityType String   @map("entity_type")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([url, entityId, entityType], map: "idx_webhook_url")
+  @@index([createdAt])
+  @@map("webhooks")
+}
+
+model Event {
+  id         String    @id
+  /// create | update | delete
+  type       String?
+  entityType String?   @map("entity_type")
+  entityId   String?   @map("entity_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([deletedAt])
+  @@map("events")
+}
+
+// ---------------------------------------------------------------------------
+// Parte 2 — tabelle nuove
+// ---------------------------------------------------------------------------
+
+/// Enti di IndicePA (open data). Sostituisce l'indice ES `indicepa_pec` e il CSV
+/// `indice-pa-websites.csv` usati da onboarding-italia, ed è la base delle pagine PA.
+model IpaEntity {
+  ipa         String   @id
+  description String
+  /// Tipologia/categoria dell'ente secondo IndicePA
+  category    String?
+  fiscalCode  String?  @map("fiscal_code")
+  website     String?
+  pec         String[]
+  city        String?
+  region      String?
+  syncedAt    DateTime @map("synced_at") @db.Timestamptz
+
+  onboardingRequests OnboardingRequest[]
+
+  @@index([description])
+  @@map("ipa_entities")
+}
+
+enum OnboardingFlow {
+  STANDARD
+  FAST
+
+  @@map("onboarding_flow")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("request_status")
+}
+
+/// Evoluzione di RepositoryRequest (onboarding-italia), ora nello stesso database dell'API.
+/// Lo storico degli stati e delle email inviate sta in `audit_events`.
+model OnboardingRequest {
+  id               String          @id @default(uuid())
+  /// id della RepositoryRequest originale, per le richieste importate da onboarding-italia
+  legacyId         Int?            @unique @map("legacy_id")
+  ipa              String
+  administration   String
+  contactName      String          @map("contact_name")
+  contactPhone     String?         @map("contact_phone")
+  /// NULL per le richieste importate: onboarding-italia non salvava la PEC
+  pec              String?
+  codeHostingUrl   String          @map("code_hosting_url")
+  /// NULL per le richieste importate: il vecchio DB non distingueva i due flussi
+  flow             OnboardingFlow?
+  status           RequestStatus   @default(PENDING)
+  /// Esito della verifica dell'org GitHub (fast onboarding): domini confrontati, is_verified, ecc.
+  verification     Json?           @db.JsonB
+  /// Hash del token di conferma inviato via PEC (monouso, con scadenza)
+  confirmTokenHash String?         @unique @map("confirm_token_hash")
+  confirmExpiresAt DateTime?       @map("confirm_expires_at") @db.Timestamptz
+  publisherId      String?         @map("publisher_id")
+  decidedAt        DateTime?       @map("decided_at") @db.Timestamptz
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  entity    IpaEntity? @relation(fields: [ipa], references: [ipa])
+  publisher Publisher? @relation(fields: [publisherId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([codeHostingUrl])
+  @@map("onboarding_requests")
+}
+
+enum RequestSource {
+  FORM
+  GITHUB_ISSUE
+
+  @@map("request_source")
+}
+
+/// Richieste di inserimento di software open source di terze parti.
+/// Arrivano dal form pubblico della dashboard oppure da issue GitHub intercettate
+/// (template `add_new_software`), che vengono censite qui e gestite dalla stessa coda.
+model ThirdPartyRequest {
+  id                String        @id @default(uuid())
+  source            RequestSource @default(FORM)
+  repositoryUrl     String        @map("repository_url")
+  /// Assente per le richieste da issue GitHub (si conosce solo il login)
+  requesterEmail    String?       @map("requester_email")
+  requesterName     String?       @map("requester_name")
+  requesterGithub   String?       @map("requester_github")
+  /// Repository della issue, es. "italia/catalogo-software"
+  githubRepo        String?       @map("github_repo")
+  githubIssueNumber Int?          @map("github_issue_number")
+  githubIssueUrl    String?       @map("github_issue_url")
+  /// Corpo originale della issue, conservato per audit e per rifare il parsing
+  githubIssueBody   String?       @map("github_issue_body")
+  notes             String?
+  /// Checkbox della vecchia issue: rilevante per la PA, NON di titolarità PA, publiccode.yml valido
+  declarations      Json          @db.JsonB
+  /// Esito della validazione automatica del publiccode.yml
+  validation        Json?         @db.JsonB
+  status            RequestStatus @default(PENDING)
+  reviewerNote      String?       @map("reviewer_note")
+  softwareId        String?       @map("software_id")
+  decidedAt         DateTime?     @map("decided_at") @db.Timestamptz
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  software Software? @relation(fields: [softwareId], references: [id], onDelete: SetNull)
+
+  @@unique([githubRepo, githubIssueNumber])
+  @@index([status])
+  @@index([repositoryUrl])
+  @@map("third_party_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Parte 3 — storico, audit e accesso alla dashboard
+// ---------------------------------------------------------------------------
+
+enum ActorType {
+  /// crawler, job, API
+  SYSTEM
+  /// operatore loggato nella dashboard
+  DASHBOARD_USER
+  /// chi ha fatto la richiesta (es. l'ente che conferma dal link nella PEC)
+  REQUESTER
+  /// evento arrivato da un webhook GitHub
+  GITHUB
+
+  @@map("actor_type")
+}
+
+/// Storico e audit, in un'unica tabella:
+/// - cambi di stato e passaggi delle richieste (onboarding e terze parti): creata, email inviata,
+///   verifica fallita, confermata, approvata, rifiutata, publisher creato, commento su GitHub…
+///   Sostituisce la "tabella dei log" della dashboard di onboarding-italia;
+/// - operazioni fatte dalla dashboard (CRUD su software, publisher, cataloghi) e accessi.
+model AuditEvent {
+  id         String         @id @default(uuid())
+  /// onboarding_requests | third_party_requests | software | publishers | catalogs | dashboard_users
+  entityType String         @map("entity_type")
+  entityId   String         @map("entity_id")
+  /// es. created, email_sent, verification_failed, confirmed, approved, rejected, publisher_created,
+  /// github_commented, updated, deleted, login
+  action     String
+  actorType  ActorType      @map("actor_type")
+  /// id dell'utente della dashboard, login GitHub, email del richiedente…
+  actorId    String?        @map("actor_id")
+  fromStatus RequestStatus? @map("from_status")
+  toStatus   RequestStatus? @map("to_status")
+  data       Json?          @db.JsonB
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_events")
+}
+
+/// Due ruoli: ADMIN per gli indirizzi in DASHBOARD_ADMIN_EMAILS (elenco separato da virgole),
+/// VIEWER (sola lettura) per tutti gli altri ammessi. Ricalcolato a ogni accesso.
+enum DashboardRole {
+  ADMIN
+  VIEWER
+
+  @@map("dashboard_role")
+}
+
+/// Operatori della dashboard. Possono accedere gli indirizzi dei domini in
+/// DASHBOARD_ALLOWED_EMAIL_DOMAINS, quelli in DASHBOARD_ALLOWED_EMAILS e quelli in
+/// DASHBOARD_ADMIN_EMAILS. L'utente viene creato al primo accesso; `role` è aggiornato
+/// a ogni accesso da DASHBOARD_ADMIN_EMAILS.
+model DashboardUser {
+  id          String        @id @default(uuid())
+  /// Sempre in minuscolo
+  email       String        @unique
+  name        String?
+  role        DashboardRole @default(VIEWER)
+  active      Boolean       @default(true)
+  lastLoginAt DateTime?     @map("last_login_at") @db.Timestamptz
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  sessions DashboardSession[]
+
+  @@map("dashboard_users")
+}
+
+/// Token dei magic link: casuale, salvato solo come hash, monouso, con scadenza
+/// (MAGIC_LINK_TTL_MINUTES).
+model MagicLinkToken {
+  id          String    @id @default(uuid())
+  email       String
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  usedAt      DateTime? @map("used_at") @db.Timestamptz
+  requestedIp String?   @map("requested_ip")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([email])
+  @@map("magic_link_tokens")
+}
+
+/// Sessioni della dashboard: il cookie contiene un token casuale, il DB solo il suo hash,
+/// così una sessione si può revocare (logout, utente disattivato).
+model DashboardSession {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  userAgent  String?   @map("user_agent")
+  ip         String?
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user DashboardUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("dashboard_sessions")
+}

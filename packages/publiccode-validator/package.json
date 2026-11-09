@@ -1,0 +1,17 @@
+{
+  "name": "@sw-catalog/publiccode-validator",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "publiccode-schema": "link:publiccode-schema",
+    "yaml": "^2.9.1"
+  }
+}

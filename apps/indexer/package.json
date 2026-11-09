@@ -1,0 +1,15 @@
+{
+  "name": "@sw-catalog/indexer",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "dependencies": {
+    "@sw-catalog/shared": "workspace:*",
+    "yaml": "^2.9.1"
+  }
+}

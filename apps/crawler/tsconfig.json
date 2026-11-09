@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Importa (via publiccode-validator) i sorgenti .ts di publiccode-schema: vedi il
+    // tsconfig di packages/publiccode-validator.
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src"]
+}

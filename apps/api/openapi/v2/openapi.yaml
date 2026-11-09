@@ -1,0 +1,31 @@
+# API v2 del Catalogo del software: design-first.
+# Bozza da completare nella Fase 3 di new-plan.md (risorse, paginazione, errori, autenticazione).
+openapi: 3.1.0
+info:
+  title: Developers Italia Software Catalog API
+  version: 2.0.0
+  license:
+    name: AGPL-3.0-or-later
+    identifier: AGPL-3.0-or-later
+servers:
+  - url: http://localhost:3001/v2
+paths:
+  /status:
+    get:
+      summary: Stato dell'API
+      operationId: getStatus
+      responses:
+        "200":
+          description: L'API è attiva
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, version]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: "2"

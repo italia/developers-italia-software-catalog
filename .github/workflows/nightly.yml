@@ -1,0 +1,55 @@
+# Giro notturno: crawl dei publiccode.yml, poi indicizzazione su OpenSearch.
+# Sostituisce la Action notturna di developers.italia.it (Fase 2 e 4 di new-plan.md).
+#
+# Resta spento finché non si imposta la variabile di repository NIGHTLY_ENABLED=true.
+# Variabili: API_BASEURL, OPENSEARCH_URL, OPENSEARCH_INDEX_ALIAS (facoltativa)
+# Segreti:   API_BEARER_TOKEN, GH_CRAWLER_TOKEN, OPENSEARCH_USER, OPENSEARCH_PASS
+name: Nightly crawl and index
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nessuna scrittura su API e OpenSearch"
+        type: boolean
+        default: false
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  crawl-and-index:
+    if: vars.NIGHTLY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      API_BASEURL: ${{ vars.API_BASEURL }}
+      API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GH_CRAWLER_TOKEN }}
+      OPENSEARCH_URL: ${{ vars.OPENSEARCH_URL }}
+      OPENSEARCH_INDEX_ALIAS: ${{ vars.OPENSEARCH_INDEX_ALIAS || 'developers_italia_it' }}
+      OPENSEARCH_USER: ${{ secrets.OPENSEARCH_USER }}
+      OPENSEARCH_PASS: ${{ secrets.OPENSEARCH_PASS }}
+      OPENSEARCH_REPLICAS: "1"
+      DRY_RUN_FLAG: ${{ inputs.dry_run && '--dry-run' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/checkout@v4
+        with:
+          repository: teamdigitale/publiccode-json-schema
+          path: .deps/publiccode-json-schema
+      - run: bun install && bun link
+        working-directory: .deps/publiccode-json-schema
+      - run: bun install --frozen-lockfile
+
+      - name: Crawl
+        run: bun apps/crawler/src/index.ts crawl $DRY_RUN_FLAG
+
+      - name: Index
+        run: bun apps/indexer/src/index.ts $DRY_RUN_FLAG

@@ -1,0 +1,93 @@
+# Aggiunte SOLO per lo sviluppo locale, sopra compose.yaml.
+#
+# Si attiva con COMPOSE_FILE=compose.yaml:compose.local.yaml nel .env (già in .env.example).
+#
+#   bun run infra:up      -> postgres :5433, opensearch :9200 (sicurezza attiva) + setup di ruoli e utenti
+#   bun run infra:tools   -> + opensearch-dashboards (:5601), mailpit (:8025), prisma studio (:5555)
+#   bun run infra:mail    -> solo mailpit (SMTP :1025, UI http://localhost:8025)
+#   bun run db:studio     -> Prisma Studio sul database (http://localhost:5555)
+
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432" # 5433: la 5432 è spesso occupata da un Postgres locale
+
+  opensearch:
+    environment:
+      # Senza questa riga OpenSearch blocca la creazione di indici quando il disco della VM
+      # di Docker supera il 90%, anche se i dati del catalogo sono pochi MB.
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+      # Autenticazione e ruoli restano attivi; qui si toglie solo il TLS sull'interfaccia
+      # HTTP, così browser e script parlano con http://localhost:9200 senza certificati.
+      # OPENSEARCH_HTTP_TLS=true per provare anche HTTPS (certificati demo, self-signed).
+      plugins.security.ssl.http.enabled: ${OPENSEARCH_HTTP_TLS:-false}
+    ports:
+      - "${OPENSEARCH_PORT:-9200}:9200"
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:3.9.0
+    profiles: ["tools"]
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      # Solo in locale: il server di Dashboards usa l'utente admin. Login nel browser con admin.
+      OPENSEARCH_USERNAME: admin
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:?imposta OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    ports:
+      - "5601:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  # Prisma Studio per vedere tabelle e valori del database: http://localhost:5555
+  #   bun run db:studio     (bun run db:studio:stop per fermarlo)
+  prisma-studio:
+    image: node:22-alpine
+    profiles: ["studio", "tools"]
+    entrypoint: ["sh", "/start.sh"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-catalog}:${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-catalog}
+      # Stessa versione di prisma in packages/db/package.json
+      PRISMA_VERSION: ${PRISMA_VERSION:-7.10.1}
+      PRISMA_STUDIO_PORT: ${PRISMA_STUDIO_PORT:-5555}
+    ports:
+      # Stessa porta dentro e fuori: Studio rifiuta le richieste con un Origin su un'altra porta.
+      - "${PRISMA_STUDIO_PORT:-5555}:${PRISMA_STUDIO_PORT:-5555}"
+    volumes:
+      - ./infra/prisma-studio/start.sh:/start.sh:ro
+      - ./infra/prisma-studio/forward.mjs:/forward.mjs:ro
+      - prisma-studio-modules:/studio/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:$${PRISMA_STUDIO_PORT}/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 120s # il primo avvio installa prisma
+
+  # SMTP finto per provare il mailer in locale: magic link della dashboard ed email di
+  # onboarding (PEC). Nessuna email esce davvero: finiscono tutte nella UI.
+  #   bun run mail:test    -> invia un'email di prova con la configurazione SMTP_* del .env
+  mailpit:
+    image: axllent/mailpit:v1.33
+    profiles: ["mail", "tools"]
+    environment:
+      MP_DATABASE: /data/mailpit.db # i messaggi restano dopo un riavvio
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: "true" # accetta qualsiasi SMTP_USERNAME/SMTP_PASSWORD, anche nessuno
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true" # login SMTP senza TLS, come in sviluppo
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025" # SMTP
+      - "${MAILPIT_UI_PORT:-8025}:8025" # Web UI e API
+    volumes:
+      - mailpit-data:/data
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mailpit-data:
+  prisma-studio-modules:

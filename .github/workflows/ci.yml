@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      # publiccode-schema non è ancora su npm (Fase 1c): si clona e si collega con bun link.
+      # Richiede che il validatore e il nome con la doppia c siano già nel repository remoto.
+      - uses: actions/checkout@v4
+        with:
+          repository: teamdigitale/publiccode-json-schema
+          path: .deps/publiccode-json-schema
+      - run: bun install && bun link
+        working-directory: .deps/publiccode-json-schema
+
+      - run: bun install --frozen-lockfile
+      - run: bun run db:validate
+      - run: bun run db:generate
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run --filter @sw-catalog/catalog-website build
+      - run: bun run --filter @sw-catalog/dashboard build

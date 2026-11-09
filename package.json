@@ -1,0 +1,41 @@
+{
+  "name": "developers-italia-software-catalog",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:tools": "docker compose --profile tools up -d",
+    "infra:mail": "docker compose --profile mail up -d --wait mailpit",
+    "infra:mail:stop": "docker compose --profile mail stop mailpit",
+    "infra:logs": "docker compose logs -f",
+    "db:generate": "bun run --filter @sw-catalog/db generate",
+    "db:validate": "bun run --filter @sw-catalog/db validate",
+    "db:migrate": "bun run --filter @sw-catalog/db migrate",
+    "db:migrate:deploy": "bun run --filter @sw-catalog/db migrate:deploy",
+    "db:import": "bun --env-file=.env packages/db/scripts/import-from-api.ts",
+    "db:sync-publishers": "bun --env-file=.env packages/db/scripts/sync-publishers.ts",
+    "db:studio": "docker compose --profile studio up -d --wait prisma-studio && echo \"Prisma Studio: http://localhost:${PRISMA_STUDIO_PORT:-5555}\"",
+    "db:studio:stop": "docker compose --profile studio stop prisma-studio",
+    "dev:api": "bun --env-file=.env --watch apps/api/src/index.ts",
+    "dev:dashboard": "bun run --filter @sw-catalog/dashboard dev",
+    "dev:catalog-website": "bun run --filter @sw-catalog/catalog-website dev",
+    "crawl": "bun --env-file=.env apps/crawler/src/index.ts crawl",
+    "crawl:software": "bun --env-file=.env apps/crawler/src/index.ts crawl-software",
+    "index": "bun --env-file=.env apps/indexer/src/index.ts",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun run --filter '*' test",
+    "mail:test": "bun --env-file=.env scripts/mail-test.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/nodemailer": "^7",
+    "nodemailer": "^7",
+    "typescript": "^5.9.3"
+  }
+}
