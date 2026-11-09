@@ -25,7 +25,6 @@ apps/crawler/data/
 packages/db/src/generated/
 
 # repository clonati dalla CI (publiccode-schema finché non è su npm)
-.deps/
 
 # CA dei certificati demo di OpenSearch, se copiata in locale
 root-ca.pem

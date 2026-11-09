@@ -20,14 +20,13 @@ Contesto e piano (l'architettura obiettivo è disegnata in [new-plan.md](new-pla
 | `packages/publiccode-validator` | `@sw-catalog/publiccode-validator` | regole del catalogo sopra `publiccode-schema` | `validateFile` del crawler Go |
 | `packages/shared` | `@sw-catalog/shared` | tipi dell'API v2, normalizzazione degli URL | — |
 
-`publiccode-schema` (il validatore dello standard) è un **repository separato** (`../publiccode-json-schema`), collegato con `bun link` finché non sarà pubblicato su npm.
+`publiccode-schema` (il validatore dello standard) è un **repository separato** ([teamdigitale/publiccode-json-schema](https://github.com/teamdigitale/publiccode-json-schema)), usato come dipendenza npm ([`publiccode-schema`](https://www.npmjs.com/package/publiccode-schema)). Per provare modifiche locali: `bun run build && bun link` là, `bun link publiccode-schema` qui.
 
 ## Avvio rapido: il giro completo in locale
 
 ```sh
 cp .env.example .env               # poi imposta API_TOKENS e API_BEARER_TOKEN (openssl rand -hex 24)
                                    # e le password di OpenSearch (vedi i commenti nel file)
-(cd ../publiccode-json-schema && bun install && bun link)
 bun install
 
 bun run infra:up                   # postgres :5433, opensearch :9200 (sicurezza attiva) + ruoli e utenti
@@ -75,8 +74,8 @@ Note:
 
 ## CI e giro notturno
 
-- [.github/workflows/ci.yml](.github/workflows/ci.yml): typecheck, test, build. Clona `teamdigitale/publiccode-json-schema` per il validatore.
-- [.github/workflows/nightly.yml](.github/workflows/nightly.yml): crawl e poi index ogni notte. Spento finché non si imposta la variabile `NIGHTLY_ENABLED=true` (variabili e segreti elencati nel file).
+- [.github/workflows/ci.yml](.github/workflows/ci.yml): typecheck, test, build. Per ora parte solo a mano (`workflow_dispatch`); i trigger su push e PR sono commentati nel file.
+- [.github/workflows/nightly.yml](.github/workflows/nightly.yml): crawl e poi index ogni notte. Spento finché non esiste l'infrastruttura di produzione: il cron è commentato e il job richiede la variabile `NIGHTLY_ENABLED=true` (variabili e segreti elencati nel file).
 
 ## Licenza
 

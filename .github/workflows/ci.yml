@@ -1,9 +1,12 @@
 name: CI
 
+# Spenta: parte solo a mano (Actions → CI → Run workflow).
+# Per riattivarla sui push e sulle PR, togliere il commento alle righe qui sotto.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  # pull_request:
 
 jobs:
   check:
@@ -16,14 +19,6 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      # publiccode-schema non è ancora su npm (Fase 1c): si clona e si collega con bun link.
-      # Richiede che il validatore e il nome con la doppia c siano già nel repository remoto.
-      - uses: actions/checkout@v4
-        with:
-          repository: teamdigitale/publiccode-json-schema
-          path: .deps/publiccode-json-schema
-      - run: bun install && bun link
-        working-directory: .deps/publiccode-json-schema
 
       - run: bun install --frozen-lockfile
       - run: bun run db:validate

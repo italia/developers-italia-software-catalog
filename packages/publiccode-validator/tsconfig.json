@@ -1,9 +1,4 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    // publiccode-schema esporta sorgenti .ts che tsc controlla insieme ai nostri: finché
-    // non è pubblicata compilata (.d.ts), non può rispettare noUncheckedIndexedAccess.
-    "noUncheckedIndexedAccess": false
-  },
   "include": ["src"]
 }

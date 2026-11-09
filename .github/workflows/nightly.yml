@@ -1,14 +1,17 @@
 # Giro notturno: crawl dei publiccode.yml, poi indicizzazione su OpenSearch.
 # Sostituisce la Action notturna di developers.italia.it (Fase 2 e 4 di new-plan.md).
 #
-# Resta spento finché non si imposta la variabile di repository NIGHTLY_ENABLED=true.
+# Spento: nessun cron attivo, e anche lanciato a mano non fa nulla finché non si imposta
+# la variabile di repository NIGHTLY_ENABLED=true.
 # Variabili: API_BASEURL, OPENSEARCH_URL, OPENSEARCH_INDEX_ALIAS (facoltativa)
 # Segreti:   API_BEARER_TOKEN, GH_CRAWLER_TOKEN, OPENSEARCH_USER, OPENSEARCH_PASS
 name: Nightly crawl and index
 
 on:
-  schedule:
-    - cron: "0 3 * * *"
+  # Il cron è commentato finché non esistono il DB e OpenSearch di produzione.
+  # Per riattivarlo: togliere il commento e impostare NIGHTLY_ENABLED=true.
+  # schedule:
+  #   - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -40,12 +43,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
-      - uses: actions/checkout@v4
-        with:
-          repository: teamdigitale/publiccode-json-schema
-          path: .deps/publiccode-json-schema
-      - run: bun install && bun link
-        working-directory: .deps/publiccode-json-schema
       - run: bun install --frozen-lockfile
 
       - name: Crawl

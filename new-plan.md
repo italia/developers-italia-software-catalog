@@ -172,7 +172,7 @@ Ordine pensato per ridurre il rischio. La **Fase 2 (indexer)** viene prima dell'
 - [x] Scheletro di `apps/api` con **`/v2`** (principale) e **`/v1`** (compatibilità) in cartelle separate, i due contratti OpenAPI in `openapi/v1` e `openapi/v2`, test su entrambe le versioni
 - [x] Scheletri di `apps/crawler`, `apps/indexer`, `packages/shared`
 - [x] `packages/db`: bozza di schema Prisma 7 (tabelle attuali mappate 1:1 + tabelle nuove, comprese le richieste da issue GitHub), validata con `prisma validate`
-- [x] CI (`.github/workflows/ci.yml`): install, generazione del client Prisma, typecheck, test, build di catalogo e dashboard. Clona `publiccode-json-schema` e lo collega con `bun link`: **funzionerà solo dopo aver pubblicato nel repository remoto** il validatore e il nome con la doppia c
+- [x] CI (`.github/workflows/ci.yml`): install, generazione del client Prisma, typecheck, test, build di catalogo e dashboard. `publiccode-schema` arriva da npm. Per ora solo manuale
 - [x] Issue/PR template spostati alla root `.github/`
 - [x] Licenza **AGPL-3.0-or-later** (D8): `LICENSE` e campo `license` in tutti i `package.json`
 - [ ] `publiccode.yml` del monorepo
@@ -228,7 +228,9 @@ Lo schema copre la struttura, ma una validazione equivalente al parser richiede 
 
 In `publiccode-schema` (repository separato):
 - [x] Licenza AGPL-3.0-or-later (`LICENSE` + campo `license`) e nome del pacchetto con la doppia c (`publiccode-schema`, anche negli `$id` degli schemi)
-- [ ] **Pubblicazione su npm come `publiccode-schema`** (D15) con rilasci versionati e changelog. In sviluppo il monorepo usa la copia locale con `bun link`; dopo la pubblicazione la CI non dovrà più clonare il repository
+- [x] **Pacchetto npm pronto** (versione 0.1.0): build in `dist/` (bundle ESM + `.d.ts` con estensioni esplicite, provati con `moduleResolution` `bundler`, `node16` e `nodenext`), `exports` per `.`, `./validator` e `./data/*`, solo `ajv` e `ajv-formats` come dipendenze, `prepublishOnly`, CI con prova del pacchetto installato con npm e importato con Node, workflow di rilascio da tag `v*` con provenance, README e CHANGELOG
+- [x] **Pubblicato su npm come [`publiccode-schema`](https://www.npmjs.com/package/publiccode-schema) 0.1.0** (D15, 2026-11-09), con provenance, dal workflow di rilascio (segreto `NPM_TOKEN` nell'environment GitHub omonimo). Nel monorepo `"publiccode-schema": "^0.1.0"` da npm, senza più `link:` né clone in CI
+- [ ] Configurare il trusted publishing su npmjs.com (repository `teamdigitale/publiccode-json-schema`, workflow `release.yml`, environment `NPM_TOKEN`) e poi revocare il token
 - [x] **Spostati dall'editor alla libreria** (`src/validator/`, con `validate()` esportato da `publiccode-schema/validator`, 4 test) i formati Ajv con la semantica del parser (`url_url`, `url_http_url`, `email`, `mime_type`, `spdx_expression`, `bcp47_strict_language_tag`, `iso3166_1_alpha2_lower_or_upper`, `italian_ipa_code`, `organisation_uri`, `supports_id`), con i vocabolari di `data/vocab/`
 - [x] `minLength`/`maxLength` ridefiniti per contare i **grapheme cluster**, come `umin`/`umax` del parser
 - [x] **Controlli in TypeScript fuori dallo schema**: warning di deprecazione (versione non aggiornata, `monochromeLogo`, `legal.repoOwner`, `genericName`, codici paese minuscoli…); percorsi assoluti e `file:` vietati; estensioni di logo e screenshot; video da provider oEmbed
@@ -262,6 +264,7 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
 - [x] Modalità `--dry-run` che scrive il file bulk; report finale (documenti per tipo, YAML illeggibili esclusi, errori del bulk)
 - [x] Verifica in locale: 576 software + 104 amministrazioni, come in produzione; stesse prime cinque categorie con gli stessi conteggi
 - [x] `.github/workflows/nightly.yml`: crawl e poi index, cron notturno + `workflow_dispatch`, spento finché non si imposta `NIGHTLY_ENABLED=true`
+- [ ] Riattivare le action quando esistono DB e OpenSearch di produzione: trigger push/PR in `ci.yml` e cron in `nightly.yml` (oggi commentati), poi `NIGHTLY_ENABLED=true`
 - [ ] **Cutover dell'indice**. In produzione `developers_italia_it` è **già un alias** (Searchyll lo sposta a ogni build), quindi non serve cancellare nulla:
   1. togliere `ELASTICSEARCH_PASS` dalla Action di developers.italia.it, così Searchyll e il bulk di Jekyll smettono di scrivere;
   2. lanciare l'indexer: sposta l'alias dagli indici di Searchyll al nuovo indice in un'unica operazione;
