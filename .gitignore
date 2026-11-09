@@ -29,3 +29,6 @@ packages/db/src/generated/
 
 # CA dei certificati demo di OpenSearch, se copiata in locale
 root-ca.pem
+
+# Claude Code: configurazione e file locali
+.claude/
