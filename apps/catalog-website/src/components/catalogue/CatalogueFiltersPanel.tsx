@@ -5,9 +5,9 @@ import {
   getSortedCategories,
   getSortedScopes,
   getSortedDevelopmentStatuses,
-  pnrrTargets,
-  pnrrMeasures,
 } from '../../utils/i18n';
+import { useVocabulary } from '../../hooks/useVocabulary';
+import type { VocabularyTerm } from '../../types';
 import { CatalogueFilters } from './CatalogueFilters';
 
 const softwareTypes: [string, string][] = [
@@ -19,6 +19,50 @@ const softwareTypes: [string, string][] = [
 const categories = getSortedCategories();
 const scopes = getSortedScopes();
 const devStatuses = getSortedDevelopmentStatuses();
+
+// Le voci dei filtri PNRR sono liste editoriali gestite dalla dashboard (API v2,
+// /vocabularies). La chiave è il valore cercato nei features del publiccode.yml
+// (PNRR/Misura/<chiave>, PNRR/Beneficiari/<chiave>); "Tutte"/"Tutti" = nessun filtro.
+const ALL_MEASURES = 'Tutte';
+const ALL_TARGETS = 'Tutti';
+
+const measureOptions = (terms: VocabularyTerm[]): [string, string][] => [
+  [ALL_MEASURES, ALL_MEASURES],
+  ...terms.map((t): [string, string] => [t.key, t.labelIt ? `${t.key} - ${t.labelIt}` : t.key]),
+];
+const targetOptions = (terms: VocabularyTerm[]): [string, string][] => [
+  [ALL_TARGETS, ALL_TARGETS],
+  ...terms.map((t): [string, string] => [t.key, t.labelIt ?? t.key]),
+];
+
+function VocabularyFilter(props: {
+  id: string;
+  title: string;
+  selected: string;
+  toOptions: (terms: VocabularyTerm[]) => [string, string][];
+  onChange: (value: string) => void;
+}) {
+  const { terms, error } = useVocabulary(props.id);
+  if (error) {
+    return (
+      <div className="mb-3">
+        <h4 className="h6">{props.title}</h4>
+        <p className="small text-muted">{labels.software.filter_unavailable}</p>
+      </div>
+    );
+  }
+  if (!terms) return null;
+  return (
+    <CatalogueFilters
+      title={props.title}
+      options={props.toOptions(terms)}
+      selected={props.selected}
+      onChange={(val) => props.onChange(val as string)}
+      capitalize={false}
+      radio
+    />
+  );
+}
 
 interface Props {
   type: string;
@@ -41,8 +85,8 @@ export function CatalogueFiltersPanel({ type, filters, onTypeChange, onFiltersCh
           onFiltersChange({
             ...filters,
             pnrr: isPnrr,
-            pnrrTargets: isPnrr ? filters.pnrrTargets : 'Tutti',
-            pnrrMeasures: isPnrr ? filters.pnrrMeasures : 'Tutte',
+            pnrrTargets: isPnrr ? filters.pnrrTargets : ALL_TARGETS,
+            pnrrMeasures: isPnrr ? filters.pnrrMeasures : ALL_MEASURES,
           });
         }}
         capitalize={false}
@@ -51,22 +95,20 @@ export function CatalogueFiltersPanel({ type, filters, onTypeChange, onFiltersCh
 
       {filters.pnrr && (
         <>
-          <CatalogueFilters
+          <VocabularyFilter
+            id="pnrr-targets"
             title={labels.software.pnrr_targets}
-            options={pnrrTargets}
             selected={filters.pnrrTargets}
-            onChange={(val) => onFiltersChange({ ...filters, pnrrTargets: val as string })}
-            capitalize={false}
-            radio
+            toOptions={targetOptions}
+            onChange={(pnrrTargets) => onFiltersChange({ ...filters, pnrrTargets })}
           />
           <hr/>
-          <CatalogueFilters
+          <VocabularyFilter
+            id="pnrr-measures"
             title={labels.software.pnrr_measures}
-            options={pnrrMeasures}
             selected={filters.pnrrMeasures}
-            onChange={(val) => onFiltersChange({ ...filters, pnrrMeasures: val as string })}
-            capitalize={false}
-            radio
+            toOptions={measureOptions}
+            onChange={(pnrrMeasures) => onFiltersChange({ ...filters, pnrrMeasures })}
           />
           <hr/>
         </>

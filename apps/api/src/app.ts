@@ -10,7 +10,10 @@ import { v2 } from "./v2";
 export const app = new Hono();
 
 if (process.env.NODE_ENV !== "test") app.use(logger());
-app.use(cors({ origin: (process.env.CORS_ORIGINS ?? "*").split(",") }));
+// CORS_ORIGINS: origini ammesse separate da virgola (es. il catalogo pubblico); senza, tutte.
+// "*" va passato come stringa: in una lista Hono lo confronterebbe con l'origine come testo.
+const corsOrigins = (process.env.CORS_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
+app.use(cors({ origin: corsOrigins.length && !corsOrigins.includes("*") ? corsOrigins : "*" }));
 
 app.route("/v2", v2);
 app.route("/v1", v1);

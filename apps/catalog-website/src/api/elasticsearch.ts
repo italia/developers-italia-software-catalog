@@ -1,4 +1,4 @@
-import type { SearchFilters, CatalogueItem, SoftwareDetail } from '../types';
+import type { Administration, SearchFilters, CatalogueItem, SoftwareDetail } from '../types';
 import {
   ALL_CATALOGUE,
   SOFTWARE_OPEN,
@@ -9,7 +9,7 @@ import {
   LANG,
   ES_INDEX,
 } from '../utils/constants';
-import { mockResponse } from './mockData';
+import { mockIpaEntities, mockResponse } from './mockData';
 
 const ES_URL = import.meta.env.VITE_ELASTICSEARCH_URL as string;
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
@@ -52,8 +52,10 @@ function buildFilterClauses(filters: SearchFilters) {
   for (const cat of filters.categories) {
     clauses.push({ term: { 'publiccode.categories.keyword': cat } });
   }
-  for (const status of filters.developmentStatuses) {
-    clauses.push({ term: { 'publiccode.developmentStatus': status } });
+  // Un software ha un solo stato di sviluppo: più stati selezionati vanno in OR (con un
+  // term per stato, come nel vecchio sito, "stabile + beta" non trovava nulla).
+  if (filters.developmentStatuses.length > 0) {
+    clauses.push({ terms: { 'publiccode.developmentStatus': filters.developmentStatuses } });
   }
 
   if (filters.pnrrTargets && filters.pnrrTargets !== 'Tutti') {
@@ -257,4 +259,98 @@ function mapHitToItem(hit: { _id: string; _source: Record<string, unknown> }): C
   const url = `/software/${slug}`;
 
   return { id: hit._id, category, description, icon, logo, fallback, name, url };
+}
+
+// ─── amministrazioni ────────────────────────────────────────────────────────
+// Una pagina per amministrazione (/pa/:ipa) con i software che ha pubblicato: quelli che il
+// crawler ha trovato nei suoi code hosting (campo publisher.ipa, scritto dall'indexer dalla
+// relazione software → publisher dell'API v2). Gli stessi della scheda in dashboard.
+
+async function rawSearch<T>(body: object): Promise<T> {
+  const response = await fetch(`${ES_URL}/${ES_INDEX}/_search?preference=${preference}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`Elasticsearch error: ${response.status}`);
+  return (await response.json()) as T;
+}
+
+/** Codice IPA dichiarato nel publiccode.yml (solo per i dati finti, che non hanno publisher). */
+function declaredIpa(source: Record<string, unknown>): string | null {
+  const pc = source.publiccode as SoftwareDetail['publiccode'];
+  const uri = pc?.organisation?.uri;
+  if (uri?.startsWith('urn:x-italian-pa:')) return uri.slice('urn:x-italian-pa:'.length).toLowerCase();
+  return (pc?.IT?.riuso?.codiceIPA ?? pc?.it?.riuso?.codiceIPA)?.toLowerCase() ?? null;
+}
+
+function mockPublisherIpa(source: Record<string, unknown>): string | null {
+  return ((source.publisher as SoftwareDetail['publisher'])?.ipa ?? declaredIpa(source))?.toLowerCase() ?? null;
+}
+
+type AdminSource = { 'it-riuso-codiceIPA': string; 'it-riuso-codiceIPA-label': string };
+
+/** Tutte le amministrazioni con il numero di software pubblicati, in ordine di nome. */
+export async function searchAdministrations(): Promise<Administration[]> {
+  if (USE_MOCK) {
+    await new Promise((r) => setTimeout(r, 200));
+    const counts = new Map<string, number>();
+    for (const h of mockResponse.hits.hits) {
+      const ipa = mockPublisherIpa(h._source as Record<string, unknown>);
+      if (ipa) counts.set(ipa, (counts.get(ipa) ?? 0) + 1);
+    }
+    return [...counts].map(([ipa, softwareCount]) => ({ ipa, name: mockIpaEntities[ipa]?.description ?? ipa.toUpperCase(), softwareCount }));
+  }
+
+  const [admins, counts] = await Promise.all([
+    rawSearch<{ hits: { hits: { _source: AdminSource }[] } }>({
+      size: 2000,
+      query: { term: { type: 'administration' } },
+      sort: [{ 'it-riuso-codiceIPA-label.keyword': 'asc' }],
+    }),
+    rawSearch<{ aggregations: { byIpa: { buckets: { key: string; doc_count: number }[] } } }>({
+      size: 0,
+      query: { term: { type: 'software' } },
+      aggs: { byIpa: { terms: { field: 'publisher.ipa', size: 2000 } } },
+    }),
+  ]);
+  const count = new Map(counts.aggregations.byIpa.buckets.map((b) => [b.key, b.doc_count]));
+  return admins.hits.hits.map(({ _source: a }) => ({
+    ipa: a['it-riuso-codiceIPA'],
+    name: a['it-riuso-codiceIPA-label'],
+    softwareCount: count.get(a['it-riuso-codiceIPA']) ?? 0,
+  }));
+}
+
+/** Nome dell'amministrazione dal suo documento nell'indice; null se non è nel catalogo. */
+export async function fetchAdministration(ipa: string): Promise<{ ipa: string; name: string } | null> {
+  if (USE_MOCK) {
+    const found = (await searchAdministrations()).find((a) => a.ipa === ipa);
+    return found ? { ipa: found.ipa, name: found.name } : null;
+  }
+  const res = await rawSearch<{ hits: { hits: { _source: AdminSource }[] } }>({
+    size: 1,
+    query: { bool: { filter: [{ term: { type: 'administration' } }, { term: { 'it-riuso-codiceIPA': ipa } }] } },
+  });
+  const a = res.hits.hits[0]?._source;
+  return a ? { ipa: a['it-riuso-codiceIPA'], name: a['it-riuso-codiceIPA-label'] } : null;
+}
+
+/** Software pubblicati da un'amministrazione, in ordine alfabetico. */
+export async function searchSoftwareByAdministration(
+  ipa: string,
+  from: number,
+  size: number
+): Promise<{ items: CatalogueItem[]; total: number }> {
+  if (USE_MOCK) {
+    await new Promise((r) => setTimeout(r, 200));
+    const hits = mockResponse.hits.hits.filter((h) => mockPublisherIpa(h._source as Record<string, unknown>) === ipa) as Array<{
+      _id: string;
+      _source: Record<string, unknown>;
+    }>;
+    return { items: hits.slice(from, from + size).map(mapHitToItem), total: hits.length };
+  }
+  const query = { bool: { filter: [{ term: { type: 'software' } }, { term: { 'publisher.ipa': ipa } }] } };
+  const { hits, total } = await executeQuery(query, buildSort(ALPHABETICAL), from, size);
+  return { items: hits.map(mapHitToItem), total };
 }

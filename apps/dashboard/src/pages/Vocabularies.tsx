@@ -11,7 +11,7 @@ import { useAuth } from "../lib/auth.tsx";
 import { formatDate } from "../lib/format.ts";
 import { useDeleteDialog } from "../lib/useDeleteDialog.tsx";
 
-// Liste editoriali del catalogo (D13): misure e beneficiari PNRR, tipologie di PA.
+// Liste editoriali del catalogo (D13): misure e beneficiari PNRR.
 // Le liste nascono dal seed; gli ADMIN ne modificano nome, descrizione e voci.
 
 const num = new Intl.NumberFormat("it-IT");

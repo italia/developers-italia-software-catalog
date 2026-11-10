@@ -7,9 +7,10 @@ import { actorOf, audit } from "../lib/audit.ts";
 import { getDb } from "../lib/db.ts";
 import { pageQuery, parseSort, runPaged } from "../lib/pagination.ts";
 import { problem } from "../lib/problem.ts";
-import { type AuthVars, requireAdmin, requireWriter } from "../lib/session.ts";
+import { type AuthVars, requireAdmin, requireUser, requireWriter } from "../lib/session.ts";
 import { validate } from "../lib/validate.ts";
 import { createSoftware, deleteSoftware, softwareInclude, toSoftwareDto, updateSoftware } from "../services/software.ts";
+import { isSchemaVersion, upgradePubliccode, validatePubliccode } from "../services/publiccode-validation.ts";
 import { addThirdPartySoftware } from "../services/third-party.ts";
 import { toLogDto } from "./logs.ts";
 
@@ -118,6 +119,28 @@ software.delete("/:id", requireWriter, async (c) => {
   const deleted = await deleteSoftware(db, c.req.param("id"));
   await audit(db, { entityType: "software", entityId: deleted.id, action: "deleted", ...actorOf(c), data: { url: deleted.url, name: deleted.name } });
   return c.body(null, 204);
+});
+
+// Validazione del publiccode.yml salvato contro una versione dello standard (dashboard).
+const versionParam = z.string().refine(isSchemaVersion, "versione dello standard sconosciuta");
+
+software.get(
+  "/:id/validation",
+  requireUser,
+  validate("query", z.object({ version: versionParam.optional(), strict: z.enum(["true", "false"]).optional() })),
+  async (c) => {
+    const s = await getDb().software.findUnique({ where: { id: c.req.param("id") }, select: { publiccodeYml: true } });
+    if (!s) return problem(c, 404, "Not Found", "Software non trovato");
+    const q = c.req.valid("query");
+    return c.json(await validatePubliccode(s.publiccodeYml, { version: q.version, strict: q.strict === "true" }));
+  },
+);
+
+// Il publiccode.yml aggiornato a una versione (default: l'ultima accettata dal parser).
+software.get("/:id/upgrade", requireUser, validate("query", z.object({ to: versionParam.optional() })), async (c) => {
+  const s = await getDb().software.findUnique({ where: { id: c.req.param("id") }, select: { publiccodeYml: true } });
+  if (!s) return problem(c, 404, "Not Found", "Software non trovato");
+  return c.json(await upgradePubliccode(s.publiccodeYml, c.req.valid("query").to));
 });
 
 software.get("/:id/logs", validate("query", pageQuery), async (c) => {

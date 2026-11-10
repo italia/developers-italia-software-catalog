@@ -16,7 +16,7 @@ import {
   updateVocabulary,
 } from "../services/vocabularies.ts";
 
-// Liste editoriali del catalogo (D13): misure e beneficiari PNRR, tipologie di PA.
+// Liste editoriali del catalogo (D13): misure e beneficiari PNRR.
 // Lettura pubblica (le usa il catalogo), con le sole voci attive; ?all=true, per la
 // dashboard, include le disattivate e richiede la sessione. Scritture: ADMIN o token.
 export const vocabularies = new Hono<{ Variables: AuthVars }>();

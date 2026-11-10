@@ -8,7 +8,9 @@ interface Props {
 }
 
 export function CatalogueItemCard({ item }: Props) {
-  const categoryLabel = categoryLabels[item.category] ?? item.category;
+  // item.category è il tipo (software_open / software_reuse), non una categoria publiccode
+  const categoryLabel =
+    (labels.software as Record<string, string>)[item.category] ?? categoryLabels[item.category] ?? item.category;
 
   return (
     <div data-testid={item.id} style={{ width: '100%', height: '100%' }}>

@@ -206,6 +206,8 @@ export function DetailPage() {
   const organisation = detail.publiccode.organisation;
   const codiceIPA = detail.publiccode.it?.riuso?.codiceIPA ?? detail.publiccode.IT?.riuso?.codiceIPA;
   const codiceIPALabel = detail['it-riuso-codiceIPA-label'];
+  // Amministrazione che ha pubblicato il software (API v2): link alla sua pagina /pa/:ipa
+  const publisher = detail.publisher;
 
   // enabling platforms as labelled badges
   const enablingPlatforms: string[] = [];
@@ -302,11 +304,20 @@ export function DetailPage() {
                 <p>{desc.shortDescription}</p>
               )}
 
-              {(repoOwner || codiceIPALabel || organisation?.name) && (
+              {publisher?.ipa ? (
                 <p>
                   {labels.software.published_by}{' '}
-                  <strong>{codiceIPALabel ?? organisation?.name ?? repoOwner}</strong>
+                  <strong>
+                    <Link to={`/pa/${publisher.ipa}`}>{publisher.name}</Link>
+                  </strong>
                 </p>
+              ) : (
+                (repoOwner || codiceIPALabel || organisation?.name) && (
+                  <p>
+                    {labels.software.published_by}{' '}
+                    <strong>{codiceIPALabel ?? organisation?.name ?? repoOwner}</strong>
+                  </p>
+                )
               )}
 
               {devStatus && (

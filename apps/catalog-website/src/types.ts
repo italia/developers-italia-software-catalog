@@ -108,6 +108,31 @@ export interface SoftwareDetail {
     organisation?: { uri?: string; name?: string };
   };
   vitalityScore?: number;
+  /** Amministrazione nel cui code hosting il crawler ha trovato il software (API v2) */
+  publisher?: { name: string; ipa: string | null } | null;
   'it-riuso-codiceIPA'?: string;
   'it-riuso-codiceIPA-label'?: string;
+}
+
+/** Voce di una lista editoriale dell'API v2 (/vocabularies/:id) */
+export interface VocabularyTerm {
+  key: string;
+  labelIt: string | null;
+  labelEn: string | null;
+}
+
+/** Ente dell'anagrafica IndicePA (API v2, /ipa-entities/:ipa) */
+export interface IpaEntity {
+  ipa: string;
+  description: string;
+  category: string | null;
+  website: string | null;
+}
+
+/** Amministrazione del catalogo, dai documenti `administration` dell'indice */
+export interface Administration {
+  ipa: string;
+  name: string;
+  /** Software attivi pubblicati (publisher.ipa) */
+  softwareCount: number;
 }

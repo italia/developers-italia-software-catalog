@@ -14,7 +14,7 @@ Contesto e piano (l'architettura obiettivo è disegnata in [new-plan.md](new-pla
 | `apps/api` | `@sw-catalog/api` | Hono: `/v2` con software, publisher, log, cataloghi (lettura); `/v1` solo `status` | `developers-italia-api` (Go) |
 | `apps/crawler` | `@sw-catalog/crawler` | **funzionante**: GitHub, GitLab (anche su domini propri), Bitbucket, Gitea/Forgejo; senza vitalità | `publiccode-crawler` (Go) |
 | `apps/indexer` | `@sw-catalog/indexer` | **funzionante**: indice versionato e swap dell'alias | `scripts/get-*.js` + `_bulk` di `developers.italia.it` |
-| `apps/catalog-website` | `@sw-catalog/catalog-website` | **funzionante** (copiato da `catalogo-software`) | — |
+| `apps/catalog-website` | `@sw-catalog/catalog-website` | **funzionante** (copiato da `catalogo-software`): ricerca, scheda del software, pagine delle amministrazioni (`/pa`, `/pa/:ipa`); filtri PNRR dalle liste editoriali dell'API | — |
 | `apps/dashboard` | `@sw-catalog/dashboard` | **area pubblica**: onboarding delle PA con conferma via PEC, richiesta di software di terze parti; **area riservata `/dashboard`** (magic link): cruscotto con stato degli strumenti e statistiche, software, amministrazioni, liste editoriali con i loro software, coda delle richieste, CRUD per gli ADMIN ([dettagli](apps/dashboard/README.md)) | `onboarding-italia` + issue GitHub per software di terze parti |
 | `packages/db` | `@sw-catalog/db` | schema Prisma 7, migration, client, import dai dati di produzione ([schema e relazioni](packages/db/README.md)) | modelli GORM dell'API |
 | `packages/publiccode-validator` | `@sw-catalog/publiccode-validator` | regole del catalogo sopra `publiccode-schema` | `validateFile` del crawler Go |
@@ -34,7 +34,7 @@ bun run infra:mail                 # mailpit: SMTP :1025, UI http://localhost:80
 bun run db:migrate:deploy          # crea le tabelle
 bun run db:import                  # publisher e software dall'API pubblica di produzione
 bun run ipa:sync                   # anagrafica IndicePA (enti e PEC) per l'onboarding
-bun run db:seed:vocabularies       # liste editoriali (misure e beneficiari PNRR, tipologie di PA)
+bun run db:seed:vocabularies       # liste editoriali (misure e beneficiari PNRR)
 bun run db:studio                  # Prisma Studio: http://localhost:5555
 
 bun run dev:api                    # http://localhost:3001/v2/status
@@ -42,7 +42,7 @@ GITHUB_TOKEN=… bun run crawl --publisher c_a662 --dry-run   # crawl di prova (
 bun run index                      # indicizza su OpenSearch (alias developers_italia_it)
 
 bun run dev:dashboard              # http://localhost:5173 (area riservata: /dashboard, email in Mailpit)
-VITE_ELASTICSEARCH_URL=http://localhost:9200 VITE_USE_MOCK=false bun run dev:catalog-website   # http://localhost:3000
+VITE_ELASTICSEARCH_URL=http://localhost:9200 VITE_USE_MOCK=false VITE_API_URL=http://localhost:3001/v2 bun run dev:catalog-website   # http://localhost:3000
 ```
 
 Note:
@@ -57,7 +57,7 @@ Note:
 
 ## API: versioni
 
-- **`/v2`**: la versione principale. Contratto design-first in [apps/api/openapi/v2/openapi.yaml](apps/api/openapi/v2/openapi.yaml), codice in `apps/api/src/v2/`. Paginazione `page[size]` + `page[number]` (con totale, per la dashboard) oppure `page[after]` (cursore, per crawler e indexer). Letture pubbliche; scritture con `Authorization: Bearer <token>` (client macchina, token in `API_TOKENS`, provvisorio) oppure con la sessione di un ADMIN della dashboard. Endpoint della dashboard: `/v2/auth/*` (magic link), `/v2/ipa-entities`, `/v2/onboarding-requests`, `/v2/third-party-requests`, `/v2/stats` e `/v2/health` (cruscotto), `/v2/job-runs` (esecuzioni di crawler, indexer e sync IndicePA), `/v2/vocabularies` (liste editoriali, lettura pubblica).
+- **`/v2`**: la versione principale. Contratto design-first in [apps/api/openapi/v2/openapi.yaml](apps/api/openapi/v2/openapi.yaml), codice in `apps/api/src/v2/`. Paginazione `page[size]` + `page[number]` (con totale, per la dashboard) oppure `page[after]` (cursore, per crawler e indexer). Letture pubbliche; scritture con `Authorization: Bearer <token>` (client macchina, token in `API_TOKENS`, provvisorio) oppure con la sessione di un ADMIN della dashboard. Endpoint della dashboard: `/v2/auth/*` (magic link), `/v2/ipa-entities`, `/v2/onboarding-requests`, `/v2/third-party-requests`, `/v2/stats` e `/v2/health` (cruscotto), `/v2/job-runs` (esecuzioni di crawler, indexer e sync IndicePA), `/v2/vocabularies` (liste editoriali, lettura pubblica), `/v2/software/:id/validation` e `/v2/software/:id/upgrade` (validazione per versione e aggiornamento del `publiccode.yml`, con `publiccode-schema` 0.2).
 - **`/v1`**: compatibilità con `developers-italia-api` (Go) per i client attuali durante la migrazione. Contratto di riferimento in [apps/api/openapi/v1/open-catalog-api.oas.yaml](apps/api/openapi/v1/open-catalog-api.oas.yaml), codice in `apps/api/src/v1/`. Verrà dichiarata deprecata dopo il cutover.
 
 ## Comandi

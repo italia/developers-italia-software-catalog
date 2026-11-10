@@ -7,9 +7,10 @@ Copie dei file `_data/*.yml` del vecchio sito [developers.italia.it](https://git
 |---|---|
 | `pnrr_measures.yml` | `pnrr-measures` |
 | `pnrr_targets.yml` | `pnrr-targets` |
-| `software_pa_types.yml` | `software-pa-types` |
 
-`faq.yml` non è stato ripreso: le FAQ andranno nel CMS del nuovo sito developers.italia.it.
+Non sono stati ripresi `faq.yml` (le FAQ andranno nel CMS del nuovo sito developers.italia.it)
+e `software_pa_types.yml` (tipologie di PA di un campo delle prime bozze dello standard, che
+non esiste più e che nessun `publiccode.yml` usa).
 
 Servono solo al primo caricamento (`bun run db:seed:vocabularies`): da lì in poi le liste
 si modificano dalla dashboard (`/dashboard/vocabolari`) e questi file non vanno aggiornati.

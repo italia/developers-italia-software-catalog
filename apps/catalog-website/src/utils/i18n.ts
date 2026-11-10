@@ -26,6 +26,7 @@ export const labels = {
     pnrr: 'Software utile al Piano Nazionale di Ripresa e Resilienza (PNRR)',
     pnrr_targets: 'Beneficiari PNRR',
     pnrr_measures: 'Misure PNRR',
+    filter_unavailable: 'Filtro non disponibile al momento.',
     [SOFTWARE_OPEN]: 'Software open source',
     [SOFTWARE_REUSE]: 'Software a riuso',
     administration: 'amministrazione',
@@ -66,6 +67,24 @@ export const labels = {
     managing_organisation: 'Ente di appartenenza',
     codice_ipa: 'Codice IPA',
     affiliation: 'Affiliazione',
+  },
+  administrations: {
+    title: 'Amministrazioni',
+    intro: 'Le pubbliche amministrazioni che pubblicano software nel catalogo.',
+    search_label: "Nome o codice IPA dell'amministrazione",
+    results: 'amministrazioni',
+    software_count_one: 'software pubblicato',
+    software_count_other: 'software pubblicati',
+    no_results: 'Nessuna amministrazione trovata',
+    not_found: 'Amministrazione non trovata',
+    not_found_text: 'Il codice IPA non corrisponde a nessuna amministrazione del catalogo.',
+    published_software: 'Software pubblicati',
+    no_software: "L'amministrazione non ha ancora software pubblicati nel catalogo.",
+    ipa_code: 'Codice IPA',
+    category: 'Tipologia',
+    website: 'Sito istituzionale',
+    all: 'Tutte le amministrazioni',
+    view: "Vai all'amministrazione",
   },
   errors: {
     something_went_wrong: 'Ops! Qualcosa è andato storto...',
@@ -210,37 +229,6 @@ export const developmentStatusLabels: Record<string, string> = {
   stable: 'stabile',
   obsolete: 'obsoleto',
 };
-
-export const pnrrTargets: [string, string][] = [
-  ['Tutti', 'Tutti'],
-  ['Comuni', 'Comuni'],
-  ['Scuole', 'Scuole'],
-  ['ASL', 'ASL'],
-  ['Enti Regionali', 'Enti Regionali'],
-  ['Università', 'Università'],
-  ['PA Centrali', 'PA Centrali'],
-  ['Province', 'Province'],
-  ['Altri enti', 'Altri enti'],
-  ['Istituti di ricerca e AFAM', 'Istituti di ricerca e AFAM'],
-];
-
-export const pnrrMeasures: [string, string][] = [
-  ['Tutte', 'Tutte'],
-  ['1.1', '1.1-Infrastrutture digitali'],
-  ['1.2', '1.2-Abilitazione e facilitazione migrazione al Cloud'],
-  ['1.3.1', '1.3.1-PDND - Piattaforma Digitale Nazionale Dati'],
-  ['1.3.2', '1.3.2-Sportello Digitale Unico'],
-  ['1.4.1', '1.4.1-Esperienza del Cittadino nei servizi pubblici'],
-  ['1.4.2', '1.4.2-Accessibilità'],
-  ['1.4.3', '1.4.3-Adozione pagoPA e app IO'],
-  ['1.4.4', '1.4.4-Adozione identità digitale'],
-  ['1.4.5', '1.4.5-Digitalizzazione degli avvisi pubblici'],
-  ['1.4.6', '1.4.6-MaaS - Mobility as a Service'],
-  ['1.5', '1.5-Cybersecurity'],
-  ['1.6', '1.6-Digitalizzazione grandi amministrazioni centrali'],
-  ['1.7.1', '1.7.1-Servizio civile digitale'],
-  ['1.7.2', '1.7.2-Centri di facilitazione digitale'],
-];
 
 export function getSortedCategories(): [string, string][] {
   return Object.entries(categoryLabels).sort((a, b) =>

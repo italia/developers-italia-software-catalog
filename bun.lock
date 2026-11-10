@@ -19,6 +19,7 @@
         "@sw-catalog/shared": "workspace:*",
         "hono": "^4",
         "nodemailer": "^10.4.0",
+        "publiccode-schema": "^0.2.0",
         "yaml": "^2.9.1",
         "zod": "^4.6.7",
       },
@@ -109,7 +110,7 @@
     "packages/publiccode-validator": {
       "name": "@sw-catalog/publiccode-validator",
       "dependencies": {
-        "publiccode-schema": "^0.1.0",
+        "publiccode-schema": "^0.2.0",
         "yaml": "^2.9.1",
       },
     },
@@ -976,7 +977,7 @@
 
     "protocol-buffers-schema": ["protocol-buffers-schema@3.6.1", "", {}, "sha512-VG2K63Igkiv9p76tk1lilczEK1cT+kCjKtkdhw1dQZV3k3IXJbd3o6Ho8b9zJZaHSnT2hKe4I+ObmX9w6m5SmQ=="],
 
-    "publiccode-schema": ["publiccode-schema@0.1.0", "", { "dependencies": { "ajv": "^8.17.1", "ajv-formats": "^3.0.1" } }, "sha512-Dc7rCixnBdfCOXEEhsvBzS8HSS81w2R046zhBZk1nBHgpX3RdiHit7gie4sOARsFGgWwl+oZBDVWuC8veCAVog=="],
+    "publiccode-schema": ["publiccode-schema@0.2.0", "", { "dependencies": { "ajv": "^8.17.1", "ajv-formats": "^3.0.1" } }, "sha512-VzLqeOOPNNHTQVMkuEKS+x8FHt12D99t2+L9ifL/GHyC7mdnia9XmfNjs+/VpieVUkO9Jvm2wqqqsJH2i9WivA=="],
 
     "pure-rand": ["pure-rand@6.1.0", "", {}, "sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA=="],
 

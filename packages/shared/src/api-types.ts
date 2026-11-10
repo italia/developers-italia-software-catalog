@@ -230,7 +230,7 @@ export interface StatsDto {
 }
 
 // ---------------------------------------------------------------------------
-// Liste editoriali (D13): misure e beneficiari PNRR, tipologie di PA
+// Liste editoriali (D13): misure e beneficiari PNRR
 // ---------------------------------------------------------------------------
 
 export interface VocabularyTermDto {
@@ -257,4 +257,64 @@ export interface VocabularyDto {
 export interface VocabularyDetailDto extends VocabularyDto {
   /** In ordine; le voci disattivate solo con ?all=true (utenti della dashboard) */
   terms: VocabularyTermDto[];
+}
+
+// ---------------------------------------------------------------------------
+// Validazione del publiccode.yml per versione (dashboard, scheda del software)
+// ---------------------------------------------------------------------------
+
+export interface PubliccodeIssueDto {
+  key: string;
+  description: string;
+}
+
+export interface PubliccodeDeprecationDto {
+  id: string;
+  key: string;
+  /** Versione dello standard che l'ha deprecato */
+  since: string;
+  /** Messaggio in italiano */
+  message: string;
+  /** upgrade() lo corregge; lossy: perdendo informazioni */
+  fixable: boolean;
+  lossy: boolean;
+}
+
+export interface PubliccodeVersionOptionDto {
+  version: string;
+  /** Il parser (e quindi il crawler) accetta file con questa versione */
+  supportedByParser: boolean;
+}
+
+export interface PubliccodeValidationDto {
+  /** Il YAML non è leggibile: errors spiega perché, il resto è vuoto */
+  readable: boolean;
+  declaredVersion: string | null;
+  checkedVersion: string;
+  /** "v0": regole del parser, uguali per ogni 0.x; altrimenti lo schema della versione */
+  schema: string;
+  strict: boolean;
+  valid: boolean;
+  errors: PubliccodeIssueDto[];
+  warnings: PubliccodeIssueDto[];
+  deprecations: PubliccodeDeprecationDto[];
+  /** Versioni selezionabili, dalla più recente */
+  versions: PubliccodeVersionOptionDto[];
+  /** Ultima versione dello standard che la libreria valida e a cui aggiorna (0.8.0) */
+  latestSupported: string;
+  /** Ultima versione accettata dal parser Go e dall'editor (0.7.0) */
+  parserLatest: string;
+}
+
+export interface PubliccodeUpgradeDto {
+  from: string | null;
+  to: string;
+  /** Il publiccode.yml aggiornato */
+  yaml: string;
+  /** Deprecazioni corrette */
+  applied: PubliccodeDeprecationDto[];
+  /** Rimaste: senza correzione automatica, o con perdita di informazioni */
+  remaining: PubliccodeDeprecationDto[];
+  /** Validazione strict del file aggiornato contro `to` */
+  validation: Pick<PubliccodeValidationDto, "valid" | "errors" | "warnings">;
 }

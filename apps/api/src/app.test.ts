@@ -9,6 +9,11 @@ describe("GET /v2/status", () => {
   });
 });
 
+test("CORS: senza CORS_ORIGINS ogni origine è ammessa", async () => {
+  const res = await app.request("/v2/status", { headers: { Origin: "http://localhost:3000" } });
+  expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+});
+
 describe("GET /v1/status (compatibilità)", () => {
   test("risponde 204 come l'API Go", async () => {
     const res = await app.request("/v1/status");

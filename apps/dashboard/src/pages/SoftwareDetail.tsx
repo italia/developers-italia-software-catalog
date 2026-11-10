@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from "react-router";
 import { CopyButton } from "../components/Copy.tsx";
 import { Icon } from "../components/Icon.tsx";
+import { PubliccodePanel } from "../components/PubliccodePanel.tsx";
 import { ErrorAlert, Loading } from "../components/States.tsx";
 import { StatusBadge } from "../components/StatusBadge.tsx";
 import { type LogDto, type Page, type SoftwareDto, useApi } from "../lib/api.ts";
@@ -99,12 +100,7 @@ export function SoftwareDetail() {
         </ul>
       </section>
 
-      <section>
-        <h2 className="mb-3 flex items-center gap-2 text-xl font-bold">
-          publiccode.yml <CopyButton value={s.publiccodeYml} label="il publiccode.yml" />
-        </h2>
-        <pre className="max-h-[32rem] overflow-auto rounded-box bg-base-200 p-4 text-sm">{s.publiccodeYml}</pre>
-      </section>
+      <PubliccodePanel softwareId={s.id} yaml={s.publiccodeYml} />
       {del.dialog}
     </article>
   );

@@ -2,7 +2,9 @@ import { parse } from "yaml";
 
 // Conversione dei vecchi _data/*.yml di developers.italia.it nelle liste editoriali
 // (tabelle vocabularies e vocabulary_terms). I file sono in seed/vocabularies/.
-// Le FAQ (faq.yml) non sono qui: vanno nel CMS del nuovo sito developers.italia.it.
+// Non sono qui le FAQ (faq.yml), che vanno nel CMS del nuovo sito developers.italia.it, e
+// le tipologie di PA (software_pa_types.yml): codici di un campo delle prime bozze dello
+// standard, che non esiste più e che nessun publiccode.yml usa.
 
 export interface SeedTerm {
   key: string;
@@ -51,18 +53,5 @@ export const SEED_VOCABULARIES: SeedVocabulary[] = [
         .filter((k): k is string => k !== null && !ALL.has(k))
         .map((key) => ({ key, labelIt: key, labelEn: null }));
     },
-  },
-  {
-    id: "software-pa-types",
-    name: "Tipologie di PA",
-    description:
-      "Tipologie di amministrazione (valori di intendedAudience nei vecchi publiccode.yml), con l'etichetta mostrata nelle pagine delle amministrazioni. Senza etichetta si mostra la chiave.",
-    file: "software_pa_types.yml",
-    terms: (yml) =>
-      Object.entries(map(load(yml))).map(([key, labels]) => ({
-        key,
-        labelIt: text(map(labels).it),
-        labelEn: text(map(labels).en),
-      })),
   },
 ];

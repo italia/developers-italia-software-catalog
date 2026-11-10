@@ -27,14 +27,7 @@ describe("seed delle liste editoriali", () => {
     expect(terms[0]).toEqual({ key: "Comuni", labelIt: "Comuni", labelEn: null });
   });
 
-  test("tipologie di PA: etichette vuote → null", () => {
-    const terms = seed("software-pa-types");
-    expect(terms).toHaveLength(40);
-    expect(terms.find((t) => t.key === "it-ag-turismo")).toEqual({ key: "it-ag-turismo", labelIt: null, labelEn: null });
-    expect(terms.find((t) => t.key === "school")?.labelEn).toBe("School");
-  });
-
-  test("niente FAQ: vanno nel CMS del nuovo sito", () => {
-    expect(SEED_VOCABULARIES.map((v) => v.id)).toEqual(["pnrr-measures", "pnrr-targets", "software-pa-types"]);
+  test("solo le liste PNRR: niente FAQ (CMS del nuovo sito) né tipologie di PA", () => {
+    expect(SEED_VOCABULARIES.map((v) => v.id)).toEqual(["pnrr-measures", "pnrr-targets"]);
   });
 });
