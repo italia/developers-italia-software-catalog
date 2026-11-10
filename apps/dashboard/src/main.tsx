@@ -28,7 +28,7 @@ const router = createBrowserRouter([
     path: "dashboard",
     element: <DashboardLayout />,
     children: [
-      { index: true, element: <Navigate to="/dashboard/software" replace /> },
+      { index: true, lazy: async () => ({ Component: (await import("./pages/Overview.tsx")).Overview }) },
       { path: "software", lazy: async () => ({ Component: (await import("./pages/SoftwareList.tsx")).SoftwareList }) },
       { path: "software/terze-parti", lazy: async () => ({ Component: (await import("./pages/ThirdPartyNew.tsx")).ThirdPartyNew }) },
       { path: "software/:id", lazy: async () => ({ Component: (await import("./pages/SoftwareDetail.tsx")).SoftwareDetail }) },

@@ -11,7 +11,7 @@
 // 5. cancella i vecchi indici del prefisso, tenendo gli ultimi N per il rollback
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { OPENSEARCH_INDEX_ALIAS, type Page, type PublisherDto, type SoftwareDto } from "@sw-catalog/shared";
+import { OPENSEARCH_INDEX_ALIAS, type Page, type PublisherDto, type SoftwareDto, startJobRun } from "@sw-catalog/shared";
 import { administrationDoc, softwareDoc } from "./documents.ts";
 import { indexBody } from "./mappings.ts";
 import { OpenSearch } from "./opensearch.ts";
@@ -51,7 +51,9 @@ async function fetchAll<T>(path: string): Promise<T[]> {
 
 const timestamp = () => new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
 
-async function main() {
+type RunStats = Record<string, number | string>;
+
+async function main(stats: RunStats) {
   const [software, publishers] = await Promise.all([
     fetchAll<SoftwareDto>("/software?active=true"),
     fetchAll<PublisherDto>("/publishers?active=true"),
@@ -71,6 +73,7 @@ async function main() {
   for (const p of administrations) {
     lines.push(JSON.stringify({ index: { _id: p.id } }), JSON.stringify(administrationDoc(p)));
   }
+  Object.assign(stats, { software: software.length - unreadable, administrations: administrations.length, unreadable });
   console.log(
     `documenti: ${software.length - unreadable} software (${unreadable} con YAML illeggibile, esclusi), ${administrations.length} amministrazioni`,
   );
@@ -86,6 +89,7 @@ async function main() {
   }
 
   const index = `${prefix}-${timestamp()}`;
+  stats.index = index;
   await os.request("PUT", `/${index}`, indexBody(Number(process.env.OPENSEARCH_REPLICAS ?? 0)));
   console.log(`creato l'indice ${index}`);
 
@@ -108,6 +112,7 @@ async function main() {
   }
   await os.request("POST", `/${index}/_refresh`);
   const { count } = await os.request<{ count: number }>("GET", `/${index}/_count`);
+  stats.failed = failed;
   console.log(`indicizzati ${count} documenti, ${failed} errori`);
 
   if (count === 0) throw new Error("indice vuoto: non sposto l'alias");
@@ -128,4 +133,20 @@ async function main() {
   }
 }
 
-await main();
+// L'esecuzione viene registrata nell'API (/v2/job-runs) per lo stato degli strumenti nel
+// cruscotto, se c'è API_BEARER_TOKEN e non è un --dry-run.
+const run = await startJobRun({
+  apiBaseUrl: apiBase,
+  token: opts["dry-run"] ? undefined : process.env.API_BEARER_TOKEN,
+  job: "indexer",
+  trigger: process.env.JOB_TRIGGER,
+});
+const stats: RunStats = {};
+try {
+  await main(stats);
+  await run.succeeded(stats);
+} catch (e) {
+  await run.failed(e, stats);
+  console.error((e as Error).message);
+  process.exit(1);
+}

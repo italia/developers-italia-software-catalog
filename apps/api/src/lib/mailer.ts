@@ -27,6 +27,12 @@ export interface Mail {
 
 /** Sostituibile nei test. */
 export const mailer = {
+  /** Controlla che il server SMTP risponda e accetti le credenziali (stato degli strumenti). */
+  async verify() {
+    await transport().verify();
+    return `${process.env.SMTP_HOST ?? "localhost"}:${process.env.SMTP_PORT ?? 1025}`;
+  },
+
   async send(mail: Mail) {
     // EMAIL_OVERRIDE_RECIPIENT (solo sviluppo/staging) reindirizza tutto, copie comprese.
     const override = process.env.EMAIL_OVERRIDE_RECIPIENT;

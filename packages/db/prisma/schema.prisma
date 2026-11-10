@@ -415,3 +415,36 @@ model DashboardSession {
   @@index([userId])
   @@map("dashboard_sessions")
 }
+
+// ---------------------------------------------------------------------------
+// Parte 4 — esecuzioni dei job (stato degli strumenti nel cruscotto)
+// ---------------------------------------------------------------------------
+
+enum JobStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+
+  @@map("job_status")
+}
+
+/// Una riga per ogni esecuzione di crawler, indexer e sync IndicePA: il cruscotto della
+/// dashboard ne ricava lo stato degli strumenti (ultima esecuzione, esito, durata, contatori).
+/// Crawler e indexer la scrivono tramite l'API (/v2/job-runs), il sync IndicePA direttamente.
+/// Una riga RUNNING che non viene mai chiusa è un'esecuzione interrotta (processo terminato).
+model JobRun {
+  id         String    @id @default(uuid())
+  /// crawler | crawler-software | indexer | ipa-sync
+  job        String
+  status     JobStatus @default(RUNNING)
+  /// Chi l'ha avviata: nightly, manual, dashboard…
+  trigger    String?
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz
+  /// Contatori del giro, es. repository elaborati, software nuovi e aggiornati, documenti indicizzati
+  stats      Json?     @db.JsonB
+  error      String?
+
+  @@index([job, startedAt])
+  @@map("job_runs")
+}

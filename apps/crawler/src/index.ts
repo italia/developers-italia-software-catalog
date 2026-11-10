@@ -6,6 +6,7 @@
 //   crawl-software <id|url> <publisher id|IPA> [--dry-run]
 //       crawla un singolo software
 import { parseArgs } from "node:util";
+import { type JobName, startJobRun } from "@sw-catalog/shared";
 import { api } from "./api.ts";
 import { config } from "./config.ts";
 import { Crawler, toPublisher } from "./crawler.ts";
@@ -50,26 +51,50 @@ async function selectPublishers(): Promise<Publisher[]> {
   return opts.limit ? publishers.slice(0, Number(opts.limit)) : publishers;
 }
 
+/**
+ * Registra l'esecuzione nell'API (/v2/job-runs) per lo stato degli strumenti nel cruscotto;
+ * non con --dry-run. JOB_TRIGGER dice chi l'ha avviata (nightly, manual…).
+ */
+async function tracked(job: JobName, crawler: Crawler, fn: () => Promise<void>) {
+  const run = await startJobRun({
+    apiBaseUrl: config.apiBaseUrl,
+    token: dryRun ? undefined : config.apiToken,
+    job,
+    trigger: process.env.JOB_TRIGGER,
+  });
+  try {
+    await fn();
+  } catch (e) {
+    await run.failed(e, { ...crawler.stats });
+    throw e;
+  }
+  await run.succeeded({ ...crawler.stats });
+}
+
 async function crawl() {
   const crawler = new Crawler(dryRun);
-  const publishers = await selectPublishers();
-  console.log(`publisher da scandire: ${publishers.length} (${publishers.reduce((n, p) => n + p.sources.length, 0)} sorgenti)`);
+  await tracked("crawler", crawler, async () => {
+    const publishers = await selectPublishers();
+    console.log(`publisher da scandire: ${publishers.length} (${publishers.reduce((n, p) => n + p.sources.length, 0)} sorgenti)`);
 
-  for (const publisher of publishers) await crawler.scanPublisher(publisher);
-  await crawler.drain();
-  console.log(`\n${crawler.summary()}`);
+    for (const publisher of publishers) await crawler.scanPublisher(publisher);
+    await crawler.drain();
+    console.log(`\n${crawler.summary()}`);
+  });
 }
 
 async function crawlSoftware(idOrUrl: string, publisherId: string) {
-  const id = idOrUrl.startsWith("http") ? new URL(idOrUrl).pathname.split("/").pop()! : idOrUrl;
-  const software = await api.softwareById(id);
-  const publisher = toPublisher(await api.publisher(publisherId));
-  const url = software.url.replace(/\.git$/, "");
-
   const crawler = new Crawler(dryRun);
-  await crawler.scanPublisher({ ...publisher, sources: [{ url, driver: "", group: false }] });
-  await crawler.drain();
-  console.log(`\n${crawler.summary()}`);
+  await tracked("crawler-software", crawler, async () => {
+    const id = idOrUrl.startsWith("http") ? new URL(idOrUrl).pathname.split("/").pop()! : idOrUrl;
+    const software = await api.softwareById(id);
+    const publisher = toPublisher(await api.publisher(publisherId));
+    const url = software.url.replace(/\.git$/, "");
+
+    await crawler.scanPublisher({ ...publisher, sources: [{ url, driver: "", group: false }] });
+    await crawler.drain();
+    console.log(`\n${crawler.summary()}`);
+  });
 }
 
 switch (command) {

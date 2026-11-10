@@ -137,6 +137,7 @@ export function DashboardLayout() {
       <Header
         tagline="Area riservata"
         nav={[
+          { to: "/dashboard", label: "Cruscotto", end: true },
           { to: "/dashboard/software", label: "Software" },
           { to: "/dashboard/publishers", label: "Amministrazioni" },
           { to: "/dashboard/richieste", label: "Richieste" },

@@ -101,3 +101,27 @@
 .ipa-results > li.ipa-result-active {
   background: var(--color-base-200);
 }
+
+/*
+ * graph-italia-components disegna i grafici (canvas di ECharts) con "Titillium Web" e
+ * senza alternative: senza questo alias il browser ripiega su un font con grazie. Stessi
+ * file di "Titillium Sans Pro" di @italia-tailwind/css, il font del resto della pagina.
+ */
+@font-face {
+  font-family: "Titillium Web";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../node_modules/@italia-tailwind/css/fonts/Titillium_Sans_Pro/TitilliumSansPro-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Titillium Web";
+  font-weight: 600;
+  font-display: swap;
+  src: url("../node_modules/@italia-tailwind/css/fonts/Titillium_Sans_Pro/TitilliumSansPro-Semibold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Titillium Web";
+  font-weight: 700;
+  font-display: swap;
+  src: url("../node_modules/@italia-tailwind/css/fonts/Titillium_Sans_Pro/TitilliumSansPro-Bold.woff2") format("woff2");
+}

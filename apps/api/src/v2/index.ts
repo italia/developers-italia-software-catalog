@@ -2,11 +2,14 @@ import { Hono } from "hono";
 import { type AuthVars, loadSession } from "../lib/session.ts";
 import { auth } from "./auth.ts";
 import { catalogs } from "./catalogs.ts";
+import { health } from "./health.ts";
 import { ipa } from "./ipa.ts";
+import { jobRuns } from "./job-runs.ts";
 import { logs } from "./logs.ts";
 import { onboarding } from "./onboarding.ts";
 import { publishers } from "./publishers.ts";
 import { software } from "./software.ts";
+import { stats } from "./stats.ts";
 import { thirdParty } from "./third-party.ts";
 
 // API v2: la versione principale del nuovo catalogo.
@@ -26,3 +29,6 @@ v2.route("/catalogs", catalogs);
 v2.route("/ipa-entities", ipa);
 v2.route("/onboarding-requests", onboarding);
 v2.route("/third-party-requests", thirdParty);
+v2.route("/job-runs", jobRuns);
+v2.route("/stats", stats);
+v2.route("/health", health);

@@ -2,6 +2,7 @@
 
 export * from "./url.ts";
 export * from "./api-types.ts";
+export * from "./job-runs.ts";
 
 /** Alias OpenSearch letto dal catalogo. Stesso nome dell'indice attuale, per compatibilità. */
 export const OPENSEARCH_INDEX_ALIAS = "developers_italia_it";

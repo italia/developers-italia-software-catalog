@@ -24,6 +24,7 @@ Serve una sessione: possono entrare gli indirizzi di `DASHBOARD_ALLOWED_EMAIL_DO
 
 | Percorso | |
 |---|---|
+| `/dashboard` | **Cruscotto** (vedi sotto) |
 | `/dashboard/software` | Tabella dei software; per gli ADMIN modifica ed elimina su ogni riga e "Software di terze parti" |
 | `/dashboard/software/:id` (`/modifica`) | Dettaglio con log del crawler e `publiccode.yml`; modifica di URL, alias, amministrazione, stato e file |
 | `/dashboard/software/terze-parti` | Aggiunta diretta di un software di terze parti: il repository diventa un code hosting "singolo repository" di un'organizzazione non PA, esistente o nuova; se il `publiccode.yml` è valido il software viene creato subito |
@@ -34,3 +35,17 @@ Serve una sessione: possono entrare gli indirizzi di `DASHBOARD_ALLOWED_EMAIL_DO
 Ogni cella con un valore utile (nome, URL, codice IPA, email, ID) ha il pulsante **copia**, visibile al passaggio del mouse o con il focus da tastiera (sempre visibile sui dispositivi touch). Le azioni di modifica sono nascoste ai VIEWER, e l'API rifiuta comunque le loro scritture con 403.
 
 L'area riservata è caricata a parte (lazy route di React Router), così chi apre l'onboarding pubblico non scarica le tabelle.
+
+## Cruscotto
+
+`/dashboard` mostra, dall'alto:
+
+- **stato degli strumenti** (`GET /v2/health`, aggiornato ogni minuto): API, database (latenza, ultima migration), OpenSearch (salute del cluster, software indicizzati rispetto a quelli attivi nel database, età dell'indice puntato dall'alias), crawler, indexer e sync IndicePA (ultima esecuzione da `job_runs`: esito, durata, contatori; in ritardo oltre 26 ore, 8 giorni per IndicePA), SMTP, richieste rimaste sulle API di GitHub. Sotto, le ultime esecuzioni dei job;
+- **totali** (KPI): software, amministrazioni, copertura delle PA di IndicePA, nuovi software e nuove amministrazioni negli ultimi 30 giorni con la variazione, richieste in attesa;
+- **andamento** per settimana (26), mese (24) o anno: crescita del catalogo, nuovi software e amministrazioni, richieste ricevute;
+- **composizione del catalogo** dai `publiccode.yml` dei software attivi: stato di sviluppo, manutenzione, amministrazioni con più software, tipo, licenze, piattaforme, versione dello standard, categorie, ambiti;
+- **qualità dei dati**: software senza amministrazione, amministrazioni senza software, software non aggiornati da più di 2 anni, obsoleti, con YAML illeggibile, disattivati, con i primi esempi cliccabili.
+
+Statistiche da `GET /v2/stats?interval=week|month|year`, in cache 5 minuti nell'API ("Aggiorna" le ricalcola). I grafici sono di [graph-italia-components](https://www.npmjs.com/package/graph-italia-components) (ECharts) e si caricano in un chunk separato (circa 560 kB compressi), dopo stato degli strumenti e qualità dei dati. Ogni grafico ha la tabella dei dati, l'informativa e lo scaricamento in CSV e PNG.
+
+Due adattamenti per graph-italia: le icone di download sono in `public/graph-italia-sprites.svg` (solo le due usate, da Bootstrap Italia), e `styles.css` dichiara "Titillium Web" (il font che usa per i grafici) sugli stessi file di "Titillium Sans Pro" di `@italia-tailwind/css`.

@@ -135,3 +135,96 @@ export interface ThirdPartyRequestDto {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Cruscotto: esecuzioni dei job, stato degli strumenti, statistiche
+// ---------------------------------------------------------------------------
+
+export const JOB_NAMES = ["crawler", "crawler-software", "indexer", "ipa-sync"] as const;
+export type JobName = (typeof JOB_NAMES)[number];
+export type JobStatus = "RUNNING" | "SUCCEEDED" | "FAILED";
+
+export interface JobRunDto {
+  id: string;
+  job: JobName;
+  status: JobStatus;
+  trigger: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  /** Contatori del giro (repository elaborati, documenti indicizzati…) */
+  stats: Record<string, number | string> | null;
+  error: string | null;
+}
+
+export type HealthLevel = "ok" | "warn" | "error" | "unknown";
+
+export interface HealthCheckDto {
+  id: string;
+  name: string;
+  level: HealthLevel;
+  /** Una riga che spiega lo stato */
+  summary: string;
+  details: { label: string; value: string }[];
+  latencyMs: number | null;
+  /** Per i job: l'ultima esecuzione */
+  lastRun: JobRunDto | null;
+}
+
+export interface HealthDto {
+  /** Il peggiore tra i controlli (unknown conta come warn) */
+  level: HealthLevel;
+  checkedAt: string;
+  checks: HealthCheckDto[];
+}
+
+/** Matrice per i grafici: prima riga le intestazioni, poi una riga per categoria o periodo. */
+export type StatsMatrix = (string | number)[][];
+export type StatsInterval = "week" | "month" | "year";
+
+export interface QualityItemDto {
+  id: string;
+  label: string;
+  description: string;
+  count: number;
+  examples: { id: string; name: string; href: string }[];
+}
+
+export interface StatsDto {
+  generatedAt: string;
+  totals: {
+    software: { total: number; active: number };
+    publishers: { total: number; active: number };
+    /** Enti con tipologia "Pubbliche Amministrazioni" in IndicePA */
+    paInIpa: number;
+    /** Publisher attivi il cui codice IPA è in IndicePA */
+    publishersInIpa: number;
+    codeHostings: { groups: number; repositories: number };
+    pendingRequests: { onboarding: number; thirdParty: number };
+    /** Ultimi 30 giorni e i 30 precedenti, per la variazione */
+    newSoftware: { current: number; previous: number };
+    newPublishers: { current: number; previous: number };
+    updatedSoftware30d: number;
+  };
+  trends: {
+    interval: StatsInterval;
+    /** [periodo, software, amministrazioni] creati nel periodo */
+    created: StatsMatrix;
+    /** [periodo, software, amministrazioni] totali alla fine del periodo */
+    cumulative: StatsMatrix;
+    /** [periodo, onboarding, terze parti] richieste ricevute */
+    requests: StatsMatrix;
+  };
+  composition: {
+    developmentStatus: StatsMatrix;
+    softwareType: StatsMatrix;
+    license: StatsMatrix;
+    maintenance: StatsMatrix;
+    platforms: StatsMatrix;
+    categories: StatsMatrix;
+    scope: StatsMatrix;
+    publiccodeVersion: StatsMatrix;
+    topPublishers: StatsMatrix;
+  };
+  quality: QualityItemDto[];
+}

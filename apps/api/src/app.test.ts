@@ -35,6 +35,14 @@ describe("autorizzazioni (senza database)", () => {
     delete process.env.API_TOKENS;
   });
 
+  test("cruscotto ed esecuzioni dei job sono riservati", async () => {
+    for (const path of ["/v2/stats", "/v2/health", "/v2/job-runs"]) expect((await app.request(path)).status).toBe(401);
+    const post = await app.request("/v2/job-runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"job":"crawler"}' });
+    expect(post.status).toBe(401);
+    const patch = await app.request("/v2/job-runs/x", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: '{"status":"SUCCEEDED"}' });
+    expect(patch.status).toBe(401);
+  });
+
   test("le liste delle richieste sono riservate", async () => {
     expect((await app.request("/v2/onboarding-requests")).status).toBe(401);
     expect((await app.request("/v2/third-party-requests")).status).toBe(401);

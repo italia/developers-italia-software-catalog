@@ -104,6 +104,7 @@ Nell'API Go non c'era modo di sapere quale publisher avesse pubblicato un softwa
 | `onboarding_requests` | Richieste di onboarding delle PA |
 | `third_party_requests` | Richieste di software di terze parti, dal form o da issue GitHub |
 | `audit_events` | Storico dei passaggi delle richieste e delle operazioni fatte dalla dashboard |
+| `job_runs` | Esecuzioni di crawler, indexer e sync IndicePA (esito, durata, contatori): lo stato degli strumenti nel cruscotto |
 | `dashboard_users`, `magic_link_tokens`, `dashboard_sessions` | Accesso alla dashboard: utenti (ruoli `ADMIN`/`VIEWER`), link di accesso, sessioni |
 
 ## Comandi

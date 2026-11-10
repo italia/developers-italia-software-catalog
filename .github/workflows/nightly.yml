@@ -38,6 +38,8 @@ jobs:
       OPENSEARCH_PASS: ${{ secrets.OPENSEARCH_PASS }}
       OPENSEARCH_REPLICAS: "1"
       DRY_RUN_FLAG: ${{ inputs.dry_run && '--dry-run' || '' }}
+      # Registrato in job_runs con l'esecuzione (stato degli strumenti nel cruscotto)
+      JOB_TRIGGER: ${{ github.event_name == 'schedule' && 'nightly' || 'manual' }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
