@@ -68,6 +68,23 @@ Servizio remoto (quando ci sarà, Fase 7): l'URL `…/mcp` del trasporto HTTP.
 
 Per provarlo a mano: `npx @modelcontextprotocol/inspector bun apps/mcp/src/stdio.ts`.
 
+## Esempio: un assistente su OpenRouter
+
+[`examples/openrouter-agent.ts`](examples/openrouter-agent.ts) mostra il server MCP usato da un modello qualsiasi di [OpenRouter](https://openrouter.ai): avvia il server come un client (stdio, o un server remoto con `--http`), passa i suoi strumenti al modello nel formato `chat/completions`, esegue le chiamate che il modello chiede e stampa la risposta, con le chiamate fatte, i token e il costo.
+
+```sh
+# nel .env della radice: OPENROUTER_API_KEY=… (https://openrouter.ai/keys)
+bun run dev:api
+bun run mcp:openrouter "Un comune cerca un software per il protocollo informatico"
+bun run mcp:openrouter --prompt "prenotare gli appuntamenti allo sportello anagrafe"   # con il prompt find_reusable_software
+bun run mcp:openrouter --model anthropic/claude-sonnet-5.5 --verbose "SUAP per un comune"
+bun run mcp:openrouter --http http://localhost:3002/mcp "software per la qualità dell'aria"   # con bun run dev:mcp
+```
+
+Opzioni: `--model` (default `OPENROUTER_MODEL` o `openai/gpt-4o-mini`; va bene qualunque modello OpenRouter che supporti gli strumenti), `--prompt`, `--http <url>`, `--max-steps` (giri di strumenti, default 8), `--verbose` (stampa i risultati degli strumenti). Le istruzioni del server diventano il messaggio di sistema, quindi anche qui i testi dei software sono trattati come dati. Ogni esecuzione è una chiamata a pagamento: GPT-4o mini costa 0,15 $ per milione di token in ingresso e 0,60 $ in uscita, quindi una ricerca con qualche chiamata agli strumenti costa una frazione di centesimo; il costo reale compare nel riepilogo finale.
+
+`bun test examples` prova il ciclo con un modello finto (strumenti MCP → funzioni, esecuzione delle chiamate, argomenti non validi, limite di giri), senza chiave e senza costi.
+
 ## Trasporto HTTP
 
 Senza stato: un server e un trasporto per richiesta, solo `POST /mcp` (`GET` e `DELETE` rispondono 405, perché non ci sono sessioni), risposte JSON. Senza autenticazione, perché gli strumenti sono in sola lettura e i dati sono quelli del catalogo pubblico, con un limite di richieste per IP. `GET /health` per i controlli.

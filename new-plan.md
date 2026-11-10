@@ -461,6 +461,7 @@ Obiettivo: un server [MCP](https://modelcontextprotocol.io) che permetta a un as
 - [x] Test: client e server collegati in memoria con l'API simulata (11, con risorse, completamento e prompt), punteggio della valutazione (1), costruzione della query di ricerca (5); provato dal vivo su stdio e HTTP con l'API locale
 - [x] **Set di valutazione** della ricerca (`apps/mcp/eval/cases.json`, `bun run mcp:eval`): 16 richieste reali di PA con i software attesi per nome e codice IPA, varianti di formulazione; misura iniziale 16/16 superati, recall media 0,85, MRR 0,93
 - [ ] Migliorare la ricerca dove la valutazione la trova fragile: sinonimi e sigle (protocollazione/protocollo, SUAP/sportello unico, whistleblowing/segnalazione illeciti), da misurare con `mcp:eval`
+- [x] **Esempio con un modello** (`apps/mcp/examples/openrouter-agent.ts`, `bun run mcp:openrouter`): assistente su OpenRouter che usa il server MCP su stdio o HTTP, con il prompt guidato facoltativo; ciclo provato con un modello finto (3 test) e dalla riga di comando contro un OpenRouter finto e l'API locale
 - [ ] Valutazione con un modello: le stesse richieste date a un assistente con il server MCP, per misurare la scelta degli argomenti e la rosa finale (chiamate a pagamento: da preventivare)
 - [x] `/v2/search` in `openapi/v2/openapi.yaml`, con gli schemi `SearchResult`, `SearchHit`, `SearchFacet`, `Problem`
 - [ ] Servizio remoto (Fase 7): container, rate limit, log anonimi delle ricerche (utili anche per capire cosa cercano le PA), pagina di documentazione su come aggiungerlo a un client MCP
