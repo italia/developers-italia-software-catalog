@@ -1,6 +1,6 @@
 import { type ReactColumnDef, SimpleTable, type SortColumn } from "@simple-table/react";
 import "@simple-table/react/styles.css";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import type { ListParams, Page } from "../lib/api.ts";
 import { Pagination } from "./Pagination.tsx";
@@ -19,7 +19,16 @@ interface Props<T> {
   onChange: (patch: Partial<ListParams>) => void;
   searchPlaceholder: string;
   caption: string;
+  /** Filtro a tendina: attivi/inattivi (default) o stato delle richieste */
+  filter?: "active" | "status" | "none";
+  /** Pulsanti accanto ai filtri (es. "Nuovo") */
+  actions?: ReactNode;
 }
+
+const filters = {
+  active: { key: "active", label: "Stato", options: [["", "Tutti"], ["true", "Attivi"], ["false", "Inattivi"]] },
+  status: { key: "status", label: "Stato", options: [["", "Tutte"], ["PENDING", "In attesa"], ["APPROVED", "Approvate"], ["REJECTED", "Rifiutate"]] },
+} as const;
 
 const parseSort = (sort?: string) =>
   sort ? { column: sort.replace(/^-/, ""), direction: sort.startsWith("-") ? ("desc" as const) : ("asc" as const) } : null;
@@ -28,7 +37,8 @@ const parseSort = (sort?: string) =>
  * Tabella con @simple-table/react: ordinamento e paginazione lato server (API v2, modalità
  * page[number]), ricerca e filtro sopra, paginazione .italia sotto. Tutto lo stato sta nell'URL.
  */
-export function DataTable<T>({ columns, page, loading, error, params, onChange, searchPlaceholder, caption }: Props<T>) {
+export function DataTable<T>({ columns, page, loading, error, params, onChange, searchPlaceholder, caption, filter = "active", actions }: Props<T>) {
+  const f = filter === "none" ? null : filters[filter];
   const [searchParams] = useSearchParams();
   const [q, setQ] = useState(params.q ?? "");
 
@@ -69,21 +79,26 @@ export function DataTable<T>({ columns, page, loading, error, params, onChange, 
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <div className="ita-field w-48">
-          <label htmlFor="table-active" className="ita-label">
-            Stato
-          </label>
-          <select
-            id="table-active"
-            className="ita-select"
-            value={params.active ?? ""}
-            onChange={(e) => onChange({ active: e.target.value })}
-          >
-            <option value="">Tutti</option>
-            <option value="true">Attivi</option>
-            <option value="false">Inattivi</option>
-          </select>
-        </div>
+        {f && (
+          <div className="ita-field w-48">
+            <label htmlFor="table-filter" className="ita-label">
+              {f.label}
+            </label>
+            <select
+              id="table-filter"
+              className="ita-select"
+              value={params[f.key] ?? ""}
+              onChange={(e) => onChange({ [f.key]: e.target.value })}
+            >
+              {f.options.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {actions && <div className="ms-auto flex flex-wrap gap-2">{actions}</div>}
       </div>
 
       {error && <ErrorAlert error={error} />}

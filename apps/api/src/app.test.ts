@@ -15,3 +15,32 @@ describe("GET /v1/status (compatibilità)", () => {
     expect(res.status).toBe(204);
   });
 });
+
+describe("autorizzazioni (senza database)", () => {
+  test("le scritture senza sessione né token rispondono 401", async () => {
+    for (const [method, path] of [
+      ["DELETE", "/v2/software/x"],
+      ["DELETE", "/v2/publishers/x"],
+      ["POST", "/v2/software/third-party"],
+    ] as const) {
+      const res = await app.request(path, { method, headers: { "Content-Type": "application/json" }, body: "{}" });
+      expect(res.status).toBe(401);
+    }
+  });
+
+  test("un token sconosciuto viene rifiutato", async () => {
+    process.env.API_TOKENS = "segreto";
+    const res = await app.request("/v2/publishers/x", { method: "DELETE", headers: { Authorization: "Bearer altro" } });
+    expect(res.status).toBe(401);
+    delete process.env.API_TOKENS;
+  });
+
+  test("le liste delle richieste sono riservate", async () => {
+    expect((await app.request("/v2/onboarding-requests")).status).toBe(401);
+    expect((await app.request("/v2/third-party-requests")).status).toBe(401);
+  });
+
+  test("/v2/auth/me senza cookie restituisce user null", async () => {
+    expect(await (await app.request("/v2/auth/me")).json()).toEqual({ user: null });
+  });
+});

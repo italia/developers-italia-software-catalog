@@ -14,6 +14,7 @@ export function useListParams(defaultSort: string) {
       active: params.get("active") ?? "",
       sort: params.get("sort") ?? defaultSort,
       publisher: params.get("publisher") ?? "",
+      status: params.get("status") ?? "",
     }),
     [params, defaultSort],
   );
@@ -25,7 +26,7 @@ export function useListParams(defaultSort: string) {
           const next = new URLSearchParams(prev);
           // Cambiare ricerca, filtro o ordinamento riporta alla prima pagina.
           if (!("page" in patch)) next.delete("page");
-          const keys = { page: "page", pageSize: "size", q: "q", active: "active", sort: "sort", publisher: "publisher" } as const;
+          const keys = { page: "page", pageSize: "size", q: "q", active: "active", sort: "sort", publisher: "publisher", status: "status" } as const;
           for (const [k, v] of Object.entries(patch) as [keyof ListParams, string | number | undefined][]) {
             const key = keys[k];
             if (v === undefined || v === "" || (k === "page" && v === 1)) next.delete(key);

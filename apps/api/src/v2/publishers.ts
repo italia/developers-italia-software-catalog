@@ -1,13 +1,15 @@
 import type { Prisma } from "@sw-catalog/db";
 import { Hono } from "hono";
 import { z } from "zod";
-import { requireToken } from "../lib/auth.ts";
+import { actorOf, audit } from "../lib/audit.ts";
 import { getDb } from "../lib/db.ts";
 import { pageQuery, parseSort, runPaged } from "../lib/pagination.ts";
 import { problem } from "../lib/problem.ts";
+import { type AuthVars, requireWriter } from "../lib/session.ts";
 import { validate } from "../lib/validate.ts";
 import {
   createPublisher,
+  deletePublisher,
   findPublisher,
   publisherInclude,
   toPublisherDto,
@@ -32,7 +34,7 @@ const publisherBody = z.strictObject({
   codeHosting: z.array(z.strictObject({ url: z.url(), group: z.boolean().optional() })).min(1),
 });
 
-export const publishers = new Hono();
+export const publishers = new Hono<{ Variables: AuthVars }>();
 
 publishers.get("/", validate("query", listQuery), async (c) => {
   const q = c.req.valid("query");
@@ -74,10 +76,31 @@ publishers.get("/:id", async (c) => {
   return c.json(toPublisherDto(row));
 });
 
-publishers.post("/", requireToken, validate("json", publisherBody), async (c) => {
-  return c.json(await createPublisher(getDb(), c.req.valid("json")), 201);
+publishers.post("/", requireWriter, validate("json", publisherBody), async (c) => {
+  const db = getDb();
+  const created = await createPublisher(db, c.req.valid("json"));
+  await audit(db, { entityType: "publishers", entityId: created.id, action: "created", ...actorOf(c) });
+  return c.json(created, 201);
 });
 
-publishers.patch("/:id", requireToken, validate("json", publisherBody.partial()), async (c) => {
-  return c.json(await updatePublisher(getDb(), c.req.param("id"), c.req.valid("json")));
+publishers.patch("/:id", requireWriter, validate("json", publisherBody.partial()), async (c) => {
+  const db = getDb();
+  const body = c.req.valid("json");
+  const updated = await updatePublisher(db, c.req.param("id"), body);
+  await audit(db, { entityType: "publishers", entityId: updated.id, action: "updated", ...actorOf(c), data: { fields: Object.keys(body) } });
+  return c.json(updated);
+});
+
+/** I software del publisher restano, senza publisher (publisher_id → NULL). */
+publishers.delete("/:id", requireWriter, async (c) => {
+  const db = getDb();
+  const deleted = await deletePublisher(db, c.req.param("id"));
+  await audit(db, {
+    entityType: "publishers",
+    entityId: deleted.id,
+    action: "deleted",
+    ...actorOf(c),
+    data: { description: deleted.description, alternativeId: deleted.alternativeId, softwareCount: deleted.softwareCount },
+  });
+  return c.body(null, 204);
 });

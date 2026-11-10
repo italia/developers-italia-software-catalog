@@ -125,3 +125,13 @@ export async function updateSoftware(
 
   return toSoftwareDto(updated);
 }
+
+/** Elimina il software con i suoi URL (FK in CASCADE); restituisce lo stato precedente. */
+export async function deleteSoftware(db: PrismaClient, id: string): Promise<SoftwareDto> {
+  return db.$transaction(async (tx) => {
+    const current = await tx.software.findUnique({ where: { id }, include: softwareInclude });
+    if (!current) throw new HttpError(404, "Not Found", "Software non trovato");
+    await tx.software.delete({ where: { id } });
+    return toSoftwareDto(current);
+  });
+}

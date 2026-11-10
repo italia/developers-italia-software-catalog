@@ -199,7 +199,7 @@ Ordine pensato per ridurre il rischio. La **Fase 2 (indexer)** viene prima dell'
   - da aggiungere: `api_keys` per i client macchina della v2 (D5): nome, prefisso visibile, hash, scope, creata da, ultimo uso, scadenza, revoca
   - anagrafica: `ipa_entities`
   - mancano i vocabolari editoriali (D13)
-- [ ] **Sync IndicePA** (sostituisce `ipa-to-elasticsearch` di developers.italia.it-data e il CSV di onboarding-italia):
+- [x] **Sync IndicePA** (sostituisce `ipa-to-elasticsearch` di developers.italia.it-data e il CSV di onboarding-italia): `bun run ipa:sync` (`apps/api/src/jobs/sync-ipa.ts`) legge il dataset "Enti" dall'API CKAN degli open data (23.771 enti, PEC = email con tipo `Pec`), upsert con `jsonb_to_recordset` in una transazione, poi rimuove gli enti spariti tranne quelli citati da una richiesta di onboarding; si ferma se arrivano meno di 1.000 enti. Ricerca per nome, codice IPA o codice fiscale in `GET /v2/ipa-entities?q=`. Restano da fare il workflow e gli override:
   - job che scarica gli open data IndicePA (enti, PEC, siti istituzionali, codice fiscale) e fa l'upsert in `ipa_entities` dentro una transazione: niente finestre senza dati (chiude **B11**)
   - codice fiscale incluso, così la ricerca per CF funziona (chiude **B12**)
   - `.github/workflows/sync-ipa.yml`, una volta al giorno
@@ -264,6 +264,7 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
 - [x] Modalità `--dry-run` che scrive il file bulk; report finale (documenti per tipo, YAML illeggibili esclusi, errori del bulk)
 - [x] Verifica in locale: 576 software + 104 amministrazioni, come in produzione; stesse prime cinque categorie con gli stessi conteggi
 - [x] `.github/workflows/nightly.yml`: crawl e poi index, cron notturno + `workflow_dispatch`, spento finché non si imposta `NIGHTLY_ENABLED=true`
+- [ ] Aggiornare `apps/api/openapi/v2/openapi.yaml` con gli endpoint della dashboard (`/auth`, `/ipa-entities`, `/onboarding-requests`, `/third-party-requests`, DELETE, `/software/third-party`)
 - [ ] Riattivare le action quando esistono DB e OpenSearch di produzione: trigger push/PR in `ci.yml` e cron in `nightly.yml` (oggi commentati), poi `NIGHTLY_ENABLED=true`
 - [ ] **Cutover dell'indice**. In produzione `developers_italia_it` è **già un alias** (Searchyll lo sposta a ogni build), quindi non serve cancellare nulla:
   1. togliere `ELASTICSEARCH_PASS` dalla Action di developers.italia.it, così Searchyll e il bulk di Jekyll smettono di scrivere;
@@ -361,10 +362,13 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
 - [x] App inizializzata (D1) con `@italia-tailwind/css`: header .italia, tabelle **`@simple-table/react`** (tema collegato ai colori daisyUI/.italia con le variabili `--st-*`), campi `ita-input`/`ita-select`, `ita-pagination`, `ita-badge`, `ita-alert`, `ita-spinner`
 - [x] **Tabelle di software e amministrazioni** con paginazione, ordinamento e ricerca lato server (API v2), filtro attivi/inattivi, stato nell'URL; pagine di dettaglio (software: alias, log del crawler, `publiccode.yml`; amministrazione: codice IPA, code hosting)
 - [x] Amministrazione di ogni software: colonna nella tabella, filtro `?publisher=` con etichetta da togliere, conteggio dei software nella tabella e nella scheda dell'amministrazione
-- [ ] Per ora **senza autenticazione**: da usare solo in locale finché non c'è il magic link
+- [x] Divisa in **area pubblica** (`/`: onboarding, `/terze-parti`, `/accesso`) e **area riservata `/dashboard`** (serve la sessione); l'area riservata è caricata a parte (lazy route), così la parte pubblica pesa circa 360 kB invece di 1 MB
+- [x] **CRUD per gli ADMIN su ogni riga** (modifica ed elimina, con conferma) di software e amministrazioni, form "Nuova organizzazione" (ricerca IndicePA che precompila nome e PEC, code hosting org o singolo repository) e modifica del software (URL, alias, amministrazione, stato, `publiccode.yml`); `DELETE /v2/software/:id` e `DELETE /v2/publishers/:id` (i software restano senza publisher); ogni operazione in `audit_events`
+- [x] **Software di terze parti dalla dashboard** (`POST /v2/software/third-party`): il repository diventa un code hosting `group=false` di un'organizzazione non PA esistente o nuova; se il `publiccode.yml` è valido il software viene creato subito
+- [x] Pulsante **copia** sulle celle delle tabelle (nome, URL, codice IPA, email, ID) e nelle schede; **tabella dei software pubblicati** nella scheda di ogni amministrazione
 - [ ] Correzione manuale del publisher di un software (solo `ADMIN`) e segnalazione dei casi in cui il codice IPA del `publiccode.yml` è diverso da quello del publisher (riusi, fork o errori), riusando `buildPublisherMatcher`/`declaredIpa` di `@sw-catalog/db`; eventualmente un pulsante "sincronizza" che esegue la stessa logica di `db:sync-publishers` tramite l'API
 - [ ] Componenti con `@italia-tailwind/recipes`: oggi il markup è riscritto in JSX a partire dalle ricette (che restituiscono stringhe HTML); valutare componenti React condivisi in `packages/ui`
-- [ ] **Accesso con magic link via email** (D5; chiude **S1**, **S2** e **S6**). Il meccanismo è quello già implementato in onboarding-italia (`app/api/login`, `app/api/auth`, template `loginTemplate.mjml`), spostato nell'API e reso sicuro:
+- [x] **Accesso con magic link via email** (D5; chiude **S1**, **S2** e **S6**). Fatto come descritto sotto, con due differenze: il link apre `/accesso/verifica` della dashboard, che chiede un clic e fa `POST /v2/auth/verify` (un `GET /v2/auth/callback` verrebbe consumato dai sistemi che aprono in anticipo i link delle email); il rate limit è in memoria (un'istanza sola). Codice in `apps/api/src/v2/auth.ts` e `lib/session.ts`. Il meccanismo è quello già implementato in onboarding-italia (`app/api/login`, `app/api/auth`, template `loginTemplate.mjml`), spostato nell'API e reso sicuro:
   - **configurazione da variabili d'ambiente** (già in `.env.example`): `DASHBOARD_ALLOWED_EMAIL_DOMAINS` (domini ammessi, separati da virgola, es. `innovazione.gov.it,agid.gov.it`), `DASHBOARD_ALLOWED_EMAILS` (singoli indirizzi in più), `DASHBOARD_ADMIN_EMAILS` (amministratori, vedi sotto), `MAGIC_LINK_TTL_MINUTES`, `SESSION_TTL_HOURS`, `DASHBOARD_URL`; SMTP con `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `EMAIL_FROM`. I domini non sono più scritti nel codice
   - flusso: `POST /v2/auth/magic-link {email}` → se l'indirizzo è ammesso, salva l'hash di un token casuale in `magic_link_tokens` e invia l'email → `GET /v2/auth/callback?token=` controlla scadenza e uso singolo, crea o aggiorna `dashboard_users` (ruolo `ADMIN` se in `DASHBOARD_ADMIN_EMAILS`, altrimenti `VIEWER`), apre una sessione in `dashboard_sessions` e imposta un cookie `HttpOnly`, `Secure`, `SameSite=Lax` → redirect a `DASHBOARD_URL`
   - controllo del dominio **esatto** sulla parte dopo la `@`, in minuscolo; niente sottodomini se non elencati
@@ -380,7 +384,7 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
   - in sviluppo le email arrivano in Mailpit (`http://localhost:8025`), al posto dell'account di test Ethereal usato da onboarding-italia
   - dashboard e API sullo stesso sito (stesso dominio registrabile, oppure l'API servita sotto `/api` della dashboard), perché il cookie `SameSite=Lax` funzioni
   - ogni accesso e ogni operazione finisce in `audit_events`
-- [ ] **`packages/mailer`**: nodemailer + template MJML/Handlebars ripresi da onboarding-italia (`loginTemplate.mjml` per l'accesso, `email.mjml` per la PEC di onboarding), configurato dalle variabili SMTP
+- [ ] **`packages/mailer`** (per ora `apps/api/src/lib/mailer.ts`, nodemailer 10 e HTML semplice con i colori .italia): nodemailer + template MJML/Handlebars ripresi da onboarding-italia (`loginTemplate.mjml` per l'accesso, `email.mjml` per la PEC di onboarding), configurato dalle variabili SMTP
   - [x] Ambiente di prova: Mailpit nel compose (profilo `mail`, `bun run infra:mail`, messaggi persistenti, qualsiasi credenziale SMTP accettata) e `bun run mail:test`, che invia con nodemailer usando le stesse variabili `SMTP_*` e verifica l'arrivo tramite l'API di Mailpit
 - [ ] **Area riservata, CRUD**:
   - software: elenco e ricerca, YAML del `publiccode.yml`, attiva/disattiva con motivazione, alias, analysis, log, pulsante "ri-crawla" (`crawl-software`)
@@ -388,14 +392,13 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
   - cataloghi e sorgenti (driver, URL, argomenti JSONPath)
   - vocabolari editoriali (Fase 1b)
   - consultazione dei log; gestione dei webhook
-- [ ] **Area pubblica, onboarding PA** (sostituisce onboarding-italia, chiude **S3**, **S4** e **S5**):
+- [ ] **Area pubblica, onboarding PA** (sostituisce onboarding-italia, chiude **S3**, **S4** e **S5**). **Fatto il flusso standard** (home della dashboard, `POST /v2/onboarding-requests`, conferma da `/onboarding/conferma`, coda in `/dashboard/richieste` con approvazione o rifiuto degli ADMIN, telefono facoltativo); restano i template MJML. Il **fast onboarding GitHub non viene riportato**: ogni adesione va approvata via PEC dal team di controllo:
   - flusso standard: form → controllo IPA/PEC su `ipa_entities` → richiesta `PENDING` → mail alla PEC con token monouso e scadenza → conferma o rifiuto → publisher creato o aggiornato dall'API
-  - fast onboarding GitHub: verifica **lato server e bloccante** (org verified **e** dominio del campo `blog` = sito IndicePA), dentro la stessa transazione della registrazione; nessun dato preso dal client senza ricontrollarlo
   - email via `packages/mailer` (Mailpit in sviluppo) con i template MJML attuali
-  - **tutto nel database dell'API** (principio 5): richiesta in `onboarding_requests`, ogni passaggio in `audit_events` (email inviata alla PEC, verifica GitHub, conferma o rifiuto dell'ente, publisher creato o aggiornato), collegamento esplicito al publisher (`publisher_id`). La creazione del publisher e il cambio di stato avvengono nella stessa transazione, quindi non servono più chiamate HTTP dell'onboarding verso l'API con un token PASETO
+  - **tutto nel database dell'API** (principio 5): richiesta in `onboarding_requests`, ogni passaggio in `audit_events` (email inviata alla PEC, conferma o rifiuto dell'ente, publisher creato o aggiornato), collegamento esplicito al publisher (`publisher_id`). La creazione del publisher e il cambio di stato avvengono nella stessa transazione, quindi non servono più chiamate HTTP dell'onboarding verso l'API con un token PASETO
   - la vecchia "LOGS TABLE" diventa la coda delle richieste di onboarding nella dashboard, con la cronologia di ogni richiesta
   - **privacy**: a differenza di prima vengono salvati PEC e telefono del referente. Servono un periodo di conservazione, la minimizzazione dei dati (es. telefono facoltativo) e l'aggiornamento dell'informativa
-- [ ] **Area pubblica, richiesta software di terze parti** (form):
+- [x] **Area pubblica, richiesta software di terze parti** (form `/terze-parti`, `POST /v2/third-party-requests`, controllo immediato con `POST /v2/third-party-requests/check`). Il controllo del `publiccode.yml` avviene lato server con `safeFetch`: solo https sulla 443 e solo host pubblici, anche dopo i redirect (protezione SSRF). Manca il captcha:
   - stessi campi della issue (tre dichiarazioni, URL del repository, note) più l'email del richiedente
   - validazione automatica con `@sw-catalog/publiccode-validator`: nel browser per un primo riscontro immediato, poi lato server con i controlli di rete; controllo che **non** sia di titolarità PA (`organisation.uri` / `it.riuso.codiceIPA` assenti), controllo dei duplicati sugli URL esistenti
   - protezione anti-spam: rate limit + captcha senza tracciamento (es. ALTCHA)
@@ -407,7 +410,7 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
   - quando la richiesta viene approvata o rifiutata dalla dashboard: commento sulla issue, label (`approved` / `rejected`) e chiusura. Se la issue viene chiusa a mano su GitHub, la richiesta viene segnata di conseguenza
   - **import iniziale**: script una tantum che legge via API GitHub le issue `new-software` aperte (e quelle storiche, per avere lo storico) e le censisce
   - in seguito si possono intercettare allo stesso modo anche le altre template (bug report, segnalazioni) come richieste generiche
-- [ ] **Coda di revisione unica** per form e issue, nello stesso database dell'API, con la cronologia in `audit_events`: filtri per provenienza e stato. Se una richiesta viene approvata, il repo viene aggiunto come code hosting `group=false` a un publisher dedicato alle terze parti (o al `MAIN_PUBLISHER_ID`) e parte `crawl-software`; il richiedente riceve una mail (form) o un commento (issue)
+- [ ] **Coda di revisione unica** per form e issue (**fatta per il form**: `/dashboard/richieste`, filtro per stato, approvazione con scelta dell'organizzazione, email al richiedente; manca `crawl-software` automatico e la parte issue), nello stesso database dell'API, con la cronologia in `audit_events`: filtri per provenienza e stato. Se una richiesta viene approvata, il repo viene aggiunto come code hosting `group=false` a un publisher dedicato alle terze parti (o al `MAIN_PUBLISHER_ID`) e parte `crawl-software`; il richiedente riceve una mail (form) o un commento (issue)
 - [ ] Aggiornare `.github/ISSUE_TEMPLATE/config.yml` con un link al form, lasciando attiva la template
 - [ ] **Migrazione dei dati dal database di onboarding-italia** (script idempotente, rilanciabile fino al cutover):
   - `RepositoryRequest` → `onboarding_requests`: `id` → `legacy_id`, `nomeReferente` → `contact_name`, `amministrazione` → `administration`, `url` → `code_hosting_url`, `onboardedCompletedAt` → `decided_at`; stato `ONBOARDED` → `APPROVED`, gli altri uguali
@@ -456,7 +459,7 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
 |---|---|---|
 | S1 | Dashboard accessibile con un cookie qualsiasi | Fase 6, autenticazione |
 | S2 | `/api/logs` senza autenticazione | Fase 6, autenticazione |
-| S3 | Verifica del fast onboarding non bloccante lato server | Fase 6, onboarding |
+| S3 | Verifica del fast onboarding non bloccante lato server | Fase 6: il fast onboarding non viene riportato |
 | S4 | JWT di conferma senza scadenza | Fase 6, onboarding |
 | S5 | `id` della richiesta preso dal client, scrittura sull'API prima dell'update | Fase 6, onboarding (stessa transazione nello stesso DB) |
 | S6 | Variabile di override delle email che autorizza anche l'accesso; risposta che rivela gli indirizzi ammessi | Fase 6, accesso con magic link |

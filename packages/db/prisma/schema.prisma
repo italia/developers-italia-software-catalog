@@ -248,7 +248,7 @@ model OnboardingRequest {
   /// NULL per le richieste importate: il vecchio DB non distingueva i due flussi
   flow             OnboardingFlow?
   status           RequestStatus   @default(PENDING)
-  /// Esito della verifica dell'org GitHub (fast onboarding): domini confrontati, is_verified, ecc.
+  /// Esito della verifica dell'org GitHub del fast onboarding di onboarding-italia (solo richieste importate: il fast onboarding non è stato riportato)
   verification     Json?           @db.JsonB
   /// Hash del token di conferma inviato via PEC (monouso, con scadenza)
   confirmTokenHash String?         @unique @map("confirm_token_hash")

@@ -7,13 +7,16 @@
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit -p .",
-    "test": "bun test"
+    "test": "bun test",
+    "ipa:sync": "bun src/jobs/sync-ipa.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",
     "@sw-catalog/db": "workspace:*",
+    "@sw-catalog/publiccode-validator": "workspace:*",
     "@sw-catalog/shared": "workspace:*",
     "hono": "^4",
+    "nodemailer": "^10.4.0",
     "yaml": "^2.9.1",
     "zod": "^4.6.7"
   }

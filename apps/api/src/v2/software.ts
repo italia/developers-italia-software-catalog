@@ -3,12 +3,14 @@ import type { Prisma } from "@sw-catalog/db";
 import { normalizeUrl } from "@sw-catalog/shared";
 import { Hono } from "hono";
 import { z } from "zod";
-import { requireToken } from "../lib/auth.ts";
+import { actorOf, audit } from "../lib/audit.ts";
 import { getDb } from "../lib/db.ts";
 import { pageQuery, parseSort, runPaged } from "../lib/pagination.ts";
 import { problem } from "../lib/problem.ts";
+import { type AuthVars, requireAdmin, requireWriter } from "../lib/session.ts";
 import { validate } from "../lib/validate.ts";
-import { createSoftware, softwareInclude, toSoftwareDto, updateSoftware } from "../services/software.ts";
+import { createSoftware, deleteSoftware, softwareInclude, toSoftwareDto, updateSoftware } from "../services/software.ts";
+import { addThirdPartySoftware } from "../services/third-party.ts";
 import { toLogDto } from "./logs.ts";
 
 const boolParam = z.enum(["true", "false"]).transform((v) => v === "true");
@@ -35,7 +37,7 @@ const softwareBody = z.strictObject({
 
 const logBody = z.strictObject({ message: z.string().min(1) });
 
-export const software = new Hono();
+export const software = new Hono<{ Variables: AuthVars }>();
 
 software.get("/", validate("query", listQuery), async (c) => {
   const q = c.req.valid("query");
@@ -75,12 +77,47 @@ software.get("/:id", async (c) => {
   return c.json(toSoftwareDto(row));
 });
 
-software.post("/", requireToken, validate("json", softwareBody), async (c) => {
-  return c.json(await createSoftware(getDb(), c.req.valid("json")), 201);
+software.post("/", requireWriter, validate("json", softwareBody), async (c) => {
+  const db = getDb();
+  const created = await createSoftware(db, c.req.valid("json"));
+  await audit(db, { entityType: "software", entityId: created.id, action: "created", ...actorOf(c), data: { url: created.url } });
+  return c.json(created, 201);
 });
 
-software.patch("/:id", requireToken, validate("json", softwareBody.partial()), async (c) => {
-  return c.json(await updateSoftware(getDb(), c.req.param("id"), c.req.valid("json")));
+/**
+ * Software di terze parti dalla dashboard: il repository diventa un code hosting
+ * group=false di un publisher non PA (esistente o nuovo) e, se il publiccode.yml è
+ * valido, il software viene creato subito.
+ */
+const thirdPartyBody = z.union([
+  z.strictObject({ url: z.url(), publisherId: z.string().min(1), force: z.boolean().optional() }),
+  z.strictObject({
+    url: z.url(),
+    newPublisher: z.strictObject({ description: z.string().trim().min(2).max(300), email: z.email().nullable().optional() }),
+    force: z.boolean().optional(),
+  }),
+]);
+
+software.post("/third-party", requireAdmin, validate("json", thirdPartyBody), async (c) => {
+  return c.json(await addThirdPartySoftware(getDb(), c.req.valid("json"), actorOf(c)), 201);
+});
+
+software.patch("/:id", requireWriter, validate("json", softwareBody.partial()), async (c) => {
+  const db = getDb();
+  const body = c.req.valid("json");
+  const updated = await updateSoftware(db, c.req.param("id"), body);
+  // Il crawler aggiorna ogni notte: si registrano solo le modifiche fatte dalla dashboard.
+  if (c.get("user")) {
+    await audit(db, { entityType: "software", entityId: updated.id, action: "updated", ...actorOf(c), data: { fields: Object.keys(body) } });
+  }
+  return c.json(updated);
+});
+
+software.delete("/:id", requireWriter, async (c) => {
+  const db = getDb();
+  const deleted = await deleteSoftware(db, c.req.param("id"));
+  await audit(db, { entityType: "software", entityId: deleted.id, action: "deleted", ...actorOf(c), data: { url: deleted.url, name: deleted.name } });
+  return c.body(null, 204);
 });
 
 software.get("/:id/logs", validate("query", pageQuery), async (c) => {
@@ -96,7 +133,7 @@ software.get("/:id/logs", validate("query", pageQuery), async (c) => {
   return c.json({ data: page.rows.map(toLogDto), meta: page.meta, links: page.links });
 });
 
-software.post("/:id/logs", requireToken, validate("json", logBody), async (c) => {
+software.post("/:id/logs", requireWriter, validate("json", logBody), async (c) => {
   const db = getDb();
   const id = c.req.param("id");
   if (!(await db.software.findUnique({ where: { id }, select: { id: true } }))) {

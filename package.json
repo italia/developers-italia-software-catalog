@@ -30,12 +30,12 @@
     "index": "bun --env-file=.env apps/indexer/src/index.ts",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun run --filter '*' test",
-    "mail:test": "bun --env-file=.env scripts/mail-test.ts"
+    "mail:test": "bun --env-file=.env scripts/mail-test.ts",
+    "ipa:sync": "bun --env-file=.env apps/api/src/jobs/sync-ipa.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/nodemailer": "^7",
-    "nodemailer": "^7",
+    "nodemailer": "^10.4.0",
     "typescript": "^5.9.3"
   }
 }
