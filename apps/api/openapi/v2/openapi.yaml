@@ -29,3 +29,144 @@ paths:
                   version:
                     type: string
                     example: "2"
+  /search:
+    get:
+      summary: Ricerca nel catalogo
+      description: |
+        Ricerca pubblica sui software del catalogo (OpenSearch), con i filtri del catalogo
+        e i conteggi per ambito, categoria e stato. I filtri di una stessa lista sono in OR;
+        i parametri ripetibili accettano anche valori separati da virgola
+        (`?scope=government,local-authorities`). Con `q` i risultati sono ordinati per
+        pertinenza (tolleranza ai refusi; tutti i termini fino a due, il 75% oltre), senza
+        per data di rilascio. Lo usa il server MCP del catalogo (apps/mcp).
+      operationId: searchSoftware
+      tags: [search]
+      parameters:
+        - { name: q, in: query, description: Testo libero, schema: { type: string, maxLength: 200 } }
+        - name: scope
+          in: query
+          description: Ambiti di applicazione (`intendedAudience.scope` dello standard)
+          style: form
+          explode: true
+          schema: { type: array, items: { type: string }, maxItems: 50 }
+        - name: category
+          in: query
+          description: Categorie (`categories` dello standard)
+          style: form
+          explode: true
+          schema: { type: array, items: { type: string }, maxItems: 50 }
+        - name: developmentStatus
+          in: query
+          style: form
+          explode: true
+          schema: { type: array, items: { type: string, enum: [concept, development, beta, stable, obsolete] } }
+        - name: platform
+          in: query
+          style: form
+          explode: true
+          schema: { type: array, items: { type: string } }
+        - name: reuse
+          in: query
+          description: "`true`: solo software a riuso (titolarità di una PA); `false`: solo open source di terze parti"
+          schema: { type: string, enum: ["true", "false"] }
+        - { name: pnrrMeasure, in: query, description: "Misura PNRR (tag `PNRR/Misura/<valore>` nei features)", schema: { type: string, maxLength: 20 }, example: "1.4.1" }
+        - { name: pnrrTarget, in: query, description: "Beneficiari PNRR (tag `PNRR/Beneficiari/<valore>`)", schema: { type: string, maxLength: 100 }, example: Comuni }
+        - { name: publisher, in: query, description: Codice IPA dell'amministrazione che pubblica il software, schema: { type: string, maxLength: 50 } }
+        - { name: license, in: query, description: Licenza SPDX esatta, schema: { type: string, maxLength: 100 } }
+        - { name: "page[number]", in: query, schema: { type: integer, minimum: 1, maximum: 1000, default: 1 } }
+        - { name: "page[size]", in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses:
+        "200":
+          description: Risultati e conteggi
+          headers:
+            Cache-Control: { schema: { type: string, example: "public, max-age=60" } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResult" }
+        "422":
+          description: Parametri non validi
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "429":
+          description: Troppe richieste (120 al minuto per IP)
+        "503":
+          description: Ricerca non disponibile (OpenSearch non risponde)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+components:
+  schemas:
+    Problem:
+      type: object
+      description: Errore in formato RFC 9457
+      required: [title, status]
+      properties:
+        title: { type: string }
+        detail: { type: string }
+        status: { type: integer }
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              path: { type: string }
+              message: { type: string }
+    SearchFacet:
+      type: object
+      required: [value, count]
+      properties:
+        value: { type: string }
+        count: { type: integer }
+    SearchHit:
+      type: object
+      required: [id, name, reuse, scopes, categories, platforms]
+      properties:
+        id: { type: string, description: Id del software nell'API v2 (anche lo slug del catalogo) }
+        name: { type: string }
+        shortDescription: { type: [string, "null"] }
+        descriptionLanguage: { type: [string, "null"], description: "Lingua della descrizione (it, se c'è)" }
+        publisher:
+          description: Amministrazione nel cui code hosting il software è pubblicato
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [name, ipa]
+              properties:
+                name: { type: string }
+                ipa: { type: [string, "null"] }
+        reuse: { type: boolean, description: "Titolarità di una PA (organisation.uri urn:x-italian-pa:… o IT.riuso.codiceIPA)" }
+        declaredIpa: { type: [string, "null"], description: Codice IPA dichiarato nel publiccode.yml }
+        scopes: { type: array, items: { type: string } }
+        categories: { type: array, items: { type: string } }
+        developmentStatus: { type: [string, "null"] }
+        softwareType: { type: [string, "null"] }
+        maintenanceType: { type: [string, "null"] }
+        license: { type: [string, "null"] }
+        platforms: { type: array, items: { type: string } }
+        releaseDate: { type: [string, "null"], format: date }
+        url: { type: [string, "null"], description: Repository }
+        landingURL: { type: [string, "null"] }
+        catalogUrl: { type: [string, "null"], description: Scheda nel catalogo pubblico (con CATALOG_PUBLIC_URL) }
+        score: { type: [number, "null"], description: Pertinenza (solo con q) }
+    SearchResult:
+      type: object
+      required: [data, meta, facets]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/SearchHit" }
+        meta:
+          type: object
+          required: [total, page, size]
+          properties:
+            total: { type: integer }
+            page: { type: integer }
+            size: { type: integer }
+        facets:
+          type: object
+          required: [scopes, categories, developmentStatuses]
+          properties:
+            scopes: { type: array, items: { $ref: "#/components/schemas/SearchFacet" } }
+            categories: { type: array, items: { $ref: "#/components/schemas/SearchFacet" } }
+            developmentStatuses: { type: array, items: { $ref: "#/components/schemas/SearchFacet" } }

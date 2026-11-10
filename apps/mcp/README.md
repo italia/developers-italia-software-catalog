@@ -15,6 +15,18 @@ In sola lettura. Parla solo con l'API v2 del catalogo (`API_BASEURL`), mai diret
 | `list_categories` | Le 106 categorie dello standard, con etichetta e numero di software | `publiccode-schema` + conteggi da `/v2/search` |
 | `list_pnrr_measures` | Misure e beneficiari PNRR delle liste editoriali | `/v2/vocabularies/pnrr-*` |
 
+Nei risultati di `search_software`, oltre al JSON, c'è un collegamento (`resource_link`) alla scheda di ogni software, leggibile come risorsa.
+
+## Risorse e prompt
+
+| Risorsa | Contenuto |
+|---|---|
+| `catalog://vocabularies/scopes`, `…/categories`, `…/pnrr` | I vocabolari, come `list_scopes`, `list_categories`, `list_pnrr_measures` |
+| `catalog://software/{id}` | La scheda di un software, come `get_software` |
+| `catalog://administrations/{ipa}` | Un'amministrazione con i suoi software più recenti; il codice IPA si completa dal nome (`bari` → `c_a662`) |
+
+Il prompt **`find_reusable_software`** ("Trova software a riuso per un ambito"; argomenti `need`, `scope` con completamento dalle etichette, `administration`) guida il modello: chiarire il bisogno, tradurlo in parole chiave e vocabolari, cercare prima a riuso, approfondire 3-5 candidati, proporre una rosa motivata con i link e dichiarare i limiti.
+
 Ambiti, categorie, stati e piattaforme accettano solo i valori dello standard (lo schema dello strumento li elenca), così il modello non li inventa. Le istruzioni del server spiegano come combinarli: molti software non dichiarano l'ambito, quindi la ricerca testuale resta necessaria.
 
 Ogni risposta ha i dati strutturati (`structuredContent`) e lo stesso JSON come testo. I testi dei software (nomi, descrizioni, funzionalità, contatti) vengono dai `publiccode.yml` di chi li pubblica: le istruzioni del server dicono al modello di trattarli come dati, mai come istruzioni.
@@ -62,6 +74,12 @@ Senza stato: un server e un trasporto per richiesta, solo `POST /mcp` (`GET` e `
 
 ## Test
 
-`bun test`: client e server MCP collegati in memoria, con un'API v2 finta (argomenti → parametri dell'API, riassunto del `publiccode.yml`, errori, vocabolari, trasporto HTTP).
+`bun test`: client e server MCP collegati in memoria, con un'API v2 finta (argomenti → parametri dell'API, riassunto del `publiccode.yml`, errori, vocabolari, risorse, completamento, prompt, trasporto HTTP).
 
-Da fare (Fase 6b del piano): risorse (vocabolari, schede dei software), il prompt "trova software a riuso per un ambito", un set di valutazione con richieste reali e i software attesi.
+## Valutazione della ricerca
+
+`bun run mcp:eval` (dalla radice, con l'API avviata; `--json` per il dettaglio, `--min-pass 80` per fallire sotto una soglia): i casi di [`eval/cases.json`](eval/cases.json) sono richieste reali di PA (protocollo, SUAP, whistleblowing, siti comunali, pagoPA, cartella clinica, qualità dell'aria, biblioteche, appuntamenti, segnalazioni, firma, PNRR…), ciascuna con la chiamata a `search_software` che un buon assistente farebbe e i software che una risposta giusta deve includere (per nome e codice IPA, non per id). Per ogni caso: superato se almeno `minHits` attesi sono nei primi `k`, recall@k, posizione del primo atteso (MRR). Alcuni casi sono **varianti** della stessa richiesta con parole diverse, per vedere dove la ricerca è fragile.
+
+Misura iniziale (10 novembre 2026, DB locale importato dalla produzione): **16/16 casi superati, recall media 0,85, MRR 0,93**. Punti deboli: le formulazioni diverse (`protocollazione` non trova DocWay e ADOC2, la sigla `SUAP` non trova VBG, `segnalazione illeciti` non trova GlobaLeaks), da migliorare con sinonimi e sigle nella ricerca.
+
+Valuta lo strato di ricerca, deterministico e gratuito; non valuta come un modello sceglie gli argomenti o usa il prompt, che richiederebbe chiamate a pagamento (prossimo passo, sulle stesse richieste).

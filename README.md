@@ -75,6 +75,7 @@ Note:
 | `bun run index [--dry-run] [--keep N]` | indexer OpenSearch |
 | `bun run dev:api` / `dev:dashboard` / `dev:catalog-website` | server di sviluppo |
 | `bun run mcp` / `dev:mcp` | server MCP su stdio (per un client in locale) / su Streamable HTTP (`http://localhost:3002/mcp`) |
+| `bun run mcp:eval [--json] [--min-pass N]` | valutazione della ricerca del server MCP sui casi di `apps/mcp/eval/cases.json` (serve l'API avviata) |
 | `bun run db:studio` / `db:studio:stop` | avvia / ferma Prisma Studio nel compose: tabelle e valori del database su http://localhost:5555 |
 | `bun run infra:mail` / `infra:mail:stop` | avvia / ferma Mailpit (SMTP `localhost:1025`, UI http://localhost:8025); i messaggi restano dopo un riavvio |
 | `bun run mail:test [--to indirizzo]` | invia un'email di prova con la configurazione `SMTP_*` del `.env` e controlla che sia arrivata in Mailpit |

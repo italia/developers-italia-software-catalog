@@ -10,7 +10,8 @@
     "start": "bun src/stdio.ts",
     "start:http": "bun src/http.ts",
     "typecheck": "tsc --noEmit -p .",
-    "test": "bun test"
+    "test": "bun test",
+    "eval": "bun eval/run.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

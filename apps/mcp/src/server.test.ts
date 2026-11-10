@@ -45,7 +45,10 @@ maintenance:
 localisation: { localisationReady: true, availableLanguages: [it] }
 `,
   }),
-  "/v2/publishers": () => ({ data: [] }),
+  "/v2/publishers": (url) =>
+    url.searchParams.get("q") === "trento"
+      ? { data: [{ id: "pub1", description: "Provincia Autonoma di Trento", alternativeId: "p_tn", softwareCount: 3 }] }
+      : { data: [] },
   "/v2/ipa-entities": () => ({ data: [{ ipa: "c_a569", description: "Comune di Bagnolo Mella", category: "Pubbliche Amministrazioni", website: null }] }),
   "/v2/vocabularies/pnrr-measures": () => ({ terms: [{ key: "1.4.1", labelIt: "Esperienza del Cittadino nei servizi pubblici", labelEn: null }] }),
   "/v2/vocabularies/pnrr-targets": () => ({ terms: [{ key: "Comuni", labelIt: "Comuni", labelEn: null }] }),
@@ -141,6 +144,54 @@ describe("server MCP del catalogo", () => {
       measures: [{ key: "1.4.1", label: "Esperienza del Cittadino nei servizi pubblici" }],
       targets: [{ key: "Comuni", label: "Comuni" }],
     });
+  });
+});
+
+describe("risorse e prompt", () => {
+  test("vocabolari e schede come risorse; search_software rimanda alle schede", async () => {
+    const client = await connect();
+    const { resources } = await client.listResources();
+    expect(resources.map((r) => r.uri).sort()).toEqual([
+      "catalog://vocabularies/categories", "catalog://vocabularies/pnrr", "catalog://vocabularies/scopes",
+    ]);
+    const { resourceTemplates } = await client.listResourceTemplates();
+    expect(resourceTemplates.map((t) => t.uriTemplate).sort()).toEqual(["catalog://administrations/{ipa}", "catalog://software/{id}"]);
+
+    const sw = await client.readResource({ uri: "catalog://software/sw1" });
+    expect(JSON.parse((sw.contents[0] as { text: string }).text).publiccode.name).toBe("PiTre");
+    const scopes = await client.readResource({ uri: "catalog://vocabularies/scopes" });
+    expect(JSON.parse((scopes.contents[0] as { text: string }).text).scopes).toHaveLength(24);
+
+    const r = await client.callTool({ name: "search_software", arguments: { query: "protocollo" } });
+    expect((r.content as { type: string; uri?: string }[]).filter((c) => c.type === "resource_link").map((c) => c.uri)).toEqual([
+      "catalog://software/sw1",
+    ]);
+  });
+
+  test("completamento del codice IPA nella risorsa delle amministrazioni", async () => {
+    const client = await connect();
+    const c = await client.complete({
+      ref: { type: "ref/resource", uri: "catalog://administrations/{ipa}" },
+      argument: { name: "ipa", value: "trento" },
+    });
+    expect(c.completion.values).toEqual(["p_tn"]);
+  });
+
+  test("prompt per trovare software a riuso, con il completamento dell'ambito", async () => {
+    const client = await connect();
+    const { prompts } = await client.listPrompts();
+    expect(prompts.map((p) => p.name)).toEqual(["find_reusable_software"]);
+    const p = await client.getPrompt({
+      name: "find_reusable_software",
+      arguments: { need: "protocollo informatico", scope: "local-authorities", administration: "un comune" },
+    });
+    const text = (p.messages[0]?.content as { text: string }).text;
+    expect(text).toContain("protocollo informatico");
+    expect(text).toContain("local-authorities (Enti locali)");
+    expect(text).toContain("reuseOnly: true");
+
+    const c = await client.complete({ ref: { type: "ref/prompt", name: "find_reusable_software" }, argument: { name: "scope", value: "sanit" } });
+    expect(c.completion.values).toEqual(["healthcare"]);
   });
 });
 

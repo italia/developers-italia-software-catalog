@@ -456,10 +456,13 @@ Obiettivo: un server [MCP](https://modelcontextprotocol.io) che permetta a un as
 - [x] **`apps/mcp`** (`@sw-catalog/mcp`, SDK MCP 1.32, zod 4) sopra l'API v2 (`API_BASEURL`), con le istruzioni del server (come combinare filtri e testo, testi dei software come dati, nessuna valutazione ufficiale):
   - strumenti `search_software`, `get_software` (per id o URL del repository), `find_administration` (nel catalogo o, se non pubblica, in IndicePA), `list_scopes`, `list_categories` (vocabolari di `publiccode-schema` con i conteggi), `list_pnrr_measures`; ambiti, categorie, stati e piattaforme validati sui vocabolari dello standard; dati strutturati più JSON come testo
   - trasporti: stdio (`bun run mcp`) e Streamable HTTP senza stato (`bun run dev:mcp`, `POST /mcp`, rate limit per IP, `/health`)
-- [ ] Risorse (vocabolari, schede dei software `catalog://software/{id}`) e prompt "trova software a riuso per un ambito", che guida il modello a chiarire il bisogno, mappare l'ambito sui vocabolari, cercare, confrontare e motivare la rosa con i segnali di qualità
-- [x] Test: client e server collegati in memoria con l'API simulata (8), costruzione della query di ricerca (5); provato dal vivo su stdio e HTTP con l'API locale
-- [ ] **Set di valutazione** di richieste reali (comuni, ASL, scuole, regioni) con i software attesi, per misurare se la rosa è giusta quando cambiano ricerca o prompt
-- [ ] Aggiornare `openapi/v2/openapi.yaml` con `/v2/search`
+- [x] **Risorse**: vocabolari (`catalog://vocabularies/scopes|categories|pnrr`), schede dei software (`catalog://software/{id}`) e amministrazioni (`catalog://administrations/{ipa}`, codice IPA completato dal nome); `search_software` restituisce un `resource_link` per risultato
+- [x] **Prompt** `find_reusable_software` ("trova software a riuso per un ambito"): chiarire il bisogno, tradurlo in parole chiave e vocabolari, cercare prima a riuso, approfondire 3-5 candidati, rosa motivata con i link, limiti dichiarati; completamento dell'ambito dalle etichette
+- [x] Test: client e server collegati in memoria con l'API simulata (11, con risorse, completamento e prompt), punteggio della valutazione (1), costruzione della query di ricerca (5); provato dal vivo su stdio e HTTP con l'API locale
+- [x] **Set di valutazione** della ricerca (`apps/mcp/eval/cases.json`, `bun run mcp:eval`): 16 richieste reali di PA con i software attesi per nome e codice IPA, varianti di formulazione; misura iniziale 16/16 superati, recall media 0,85, MRR 0,93
+- [ ] Migliorare la ricerca dove la valutazione la trova fragile: sinonimi e sigle (protocollazione/protocollo, SUAP/sportello unico, whistleblowing/segnalazione illeciti), da misurare con `mcp:eval`
+- [ ] Valutazione con un modello: le stesse richieste date a un assistente con il server MCP, per misurare la scelta degli argomenti e la rosa finale (chiamate a pagamento: da preventivare)
+- [x] `/v2/search` in `openapi/v2/openapi.yaml`, con gli schemi `SearchResult`, `SearchHit`, `SearchFacet`, `Problem`
 - [ ] Servizio remoto (Fase 7): container, rate limit, log anonimi delle ricerche (utili anche per capire cosa cercano le PA), pagina di documentazione su come aggiungerlo a un client MCP
 
 ### Fase 7: Infrastruttura completa

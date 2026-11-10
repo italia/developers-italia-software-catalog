@@ -1,0 +1,192 @@
+{
+  "$comment": "Set di valutazione della ricerca: richieste reali di PA, la chiamata a search_software che un buon assistente farebbe e i software che una risposta giusta deve includere. I software attesi sono identificati per nome e codice IPA (non per id, che cambia tra ambienti). minHits: quanti software attesi devono comparire nei primi k risultati. Le formulazioni alternative (variant) servono a vedere dove la ricerca è fragile.",
+  "cases": [
+    {
+      "id": "protocollo",
+      "request": "Un comune deve sostituire il software di protocollo informatico e vorrebbe uno a riuso.",
+      "search": { "query": "protocollo informatico", "reuseOnly": true },
+      "expected": [
+        { "name": "PiTre", "ipa": "p_tn" },
+        { "name": "DocWay", "ipa": "esrsris" },
+        { "name": "ADOC2_AVMTB", "ipa": "c_a662" },
+        { "name": "SIBAR Documentale", "ipa": "r_sardeg" }
+      ],
+      "k": 5,
+      "minHits": 2
+    },
+    {
+      "id": "protocollo-variante",
+      "variant": "protocollo",
+      "request": "Cerco un sistema per la protocollazione dei documenti in entrata e in uscita.",
+      "search": { "query": "protocollazione documenti", "reuseOnly": true },
+      "expected": [
+        { "name": "PiTre", "ipa": "p_tn" },
+        { "name": "DocWay", "ipa": "esrsris" },
+        { "name": "ADOC2_AVMTB", "ipa": "c_a662" },
+        { "name": "SIBAR Documentale", "ipa": "r_sardeg" }
+      ],
+      "k": 5,
+      "minHits": 1
+    },
+    {
+      "id": "suap",
+      "request": "Ci serve una piattaforma per lo sportello unico per le attività produttive.",
+      "search": { "query": "sportello unico attività produttive" },
+      "expected": [
+        { "name": "VBG (Virtual Business Gate)", "ipa": "r_umbria" },
+        { "name": "SUE-SUAP", "ipa": "c_a662" }
+      ],
+      "k": 3,
+      "minHits": 2
+    },
+    {
+      "id": "suap-sigla",
+      "variant": "suap",
+      "request": "Software SUAP per un comune.",
+      "search": { "query": "SUAP" },
+      "expected": [
+        { "name": "VBG (Virtual Business Gate)", "ipa": "r_umbria" },
+        { "name": "SUE-SUAP", "ipa": "c_a662" }
+      ],
+      "k": 5,
+      "minHits": 1
+    },
+    {
+      "id": "whistleblowing",
+      "request": "Dobbiamo attivare un canale di segnalazione degli illeciti (whistleblowing).",
+      "search": { "categories": ["whistleblowing"] },
+      "expected": [
+        { "name": "GlobaLeaks", "ipa": "agid" },
+        { "name": "Whistleblowing", "ipa": "c_f205" }
+      ],
+      "k": 3,
+      "minHits": 2
+    },
+    {
+      "id": "whistleblowing-testo",
+      "variant": "whistleblowing",
+      "request": "Cerco uno strumento per le segnalazioni anonime di illeciti dei dipendenti.",
+      "search": { "query": "segnalazione illeciti" },
+      "expected": [
+        { "name": "GlobaLeaks", "ipa": "agid" },
+        { "name": "Whistleblowing", "ipa": "c_f205" }
+      ],
+      "k": 5,
+      "minHits": 1
+    },
+    {
+      "id": "sito-comune",
+      "request": "Un piccolo comune vuole rifare il sito istituzionale secondo il modello di Designers Italia.",
+      "search": { "query": "sito web comunale" },
+      "expected": [
+        { "name": "Design Comuni Italia (WordPress)", "ipa": "pcm" },
+        { "name": "Design Comuni Italia (Drupal)", "ipa": "pcm" },
+        { "name": "Comunweb", "ipa": "c_a116" },
+        { "name": "Opencity Italia - Sito web comunale", "ipa": null }
+      ],
+      "k": 8,
+      "minHits": 2
+    },
+    {
+      "id": "pagopa",
+      "request": "Una regione cerca un nodo dei pagamenti integrato con pagoPA da riusare.",
+      "search": { "query": "pagamenti pagoPA", "reuseOnly": true },
+      "expected": [
+        { "name": "PIEMONTEPAY", "ipa": "r_piemon" },
+        { "name": "MPay", "ipa": "r_marche" },
+        { "name": "MyPay", "ipa": "r_veneto" },
+        { "name": "Kit di riuso PayFlowPA", "ipa": "c_a662" }
+      ],
+      "k": 8,
+      "minHits": 2
+    },
+    {
+      "id": "cartella-clinica",
+      "request": "Un'azienda sanitaria cerca un sistema di cartella clinica informatizzata.",
+      "search": { "query": "cartella clinica", "scopes": ["healthcare"] },
+      "expected": [{ "name": "Sistema di Cartella Clinica Informatizzata", "ipa": "auslre" }],
+      "k": 3,
+      "minHits": 1
+    },
+    {
+      "id": "qualita-aria",
+      "request": "Un'agenzia ambientale deve gestire i dati delle stazioni di misura della qualità dell'aria.",
+      "search": { "query": "qualità dell'aria" },
+      "expected": [
+        { "name": "Aircentral", "ipa": "r_piemon" },
+        { "name": "Airstation", "ipa": "r_piemon" },
+        { "name": "Airvalidfe", "ipa": "r_piemon" },
+        { "name": "OPAS (OPen Air System)", "ipa": "arpa_09" }
+      ],
+      "k": 5,
+      "minHits": 2
+    },
+    {
+      "id": "biblioteca",
+      "request": "Una biblioteca comunale cerca un catalogo online (OPAC).",
+      "search": { "query": "catalogo biblioteca OPAC" },
+      "expected": [
+        { "name": "Nuovo OPAC di polo SBN", "ipa": "m_bac" },
+        { "name": "SBNWeb-Open", "ipa": "m_bac" }
+      ],
+      "k": 5,
+      "minHits": 1
+    },
+    {
+      "id": "appuntamenti",
+      "request": "Vogliamo far prenotare ai cittadini gli appuntamenti agli sportelli.",
+      "search": { "query": "prenotazione appuntamenti" },
+      "expected": [
+        { "name": "Città Facile", "ipa": "csi_piem" },
+        { "name": "OpenCity Italia - La Stanza del Cittadino", "ipa": null }
+      ],
+      "k": 5,
+      "minHits": 1
+    },
+    {
+      "id": "segnalazioni",
+      "request": "Un comune vuole raccogliere le segnalazioni dei cittadini su buche e illuminazione.",
+      "search": { "query": "segnalazioni dei cittadini" },
+      "expected": [
+        { "name": "OpenCity Italia - OpenSegnalazioni", "ipa": null },
+        { "name": "IRIS", "ipa": "c_l736" }
+      ],
+      "k": 5,
+      "minHits": 1
+    },
+    {
+      "id": "firma",
+      "request": "Ci serve un servizio di firma digitale dei documenti per i cittadini.",
+      "search": { "query": "firma digitale documenti" },
+      "expected": [
+        { "name": "Firma con IO", "ipa": "5n2tr557" },
+        { "name": "Gatefire", "ipa": "r_piemon" }
+      ],
+      "k": 8,
+      "minHits": 1
+    },
+    {
+      "id": "amministrazione",
+      "request": "Quali software per la qualità dell'aria ha pubblicato la Regione Piemonte?",
+      "search": { "query": "qualità aria", "administrationIpa": "r_piemon" },
+      "expected": [
+        { "name": "Aircentral", "ipa": "r_piemon" },
+        { "name": "Airstation", "ipa": "r_piemon" },
+        { "name": "Airvalidfe", "ipa": "r_piemon" }
+      ],
+      "k": 3,
+      "minHits": 2
+    },
+    {
+      "id": "pnrr-comuni",
+      "request": "Software utile alla misura PNRR 1.4.1 (esperienza del cittadino) per un comune.",
+      "search": { "pnrrMeasure": "1.4.1", "pnrrTarget": "Comuni" },
+      "expected": [
+        { "name": "OpenCity Italia - La Stanza del Cittadino", "ipa": null },
+        { "name": "Opencity Italia - Sito web comunale", "ipa": null }
+      ],
+      "k": 5,
+      "minHits": 1
+    }
+  ]
+}

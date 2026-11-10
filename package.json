@@ -27,6 +27,7 @@
     "dev:dashboard": "bun run --filter @sw-catalog/dashboard dev",
     "mcp": "bun --env-file=.env apps/mcp/src/stdio.ts",
     "dev:mcp": "bun --env-file=.env --watch apps/mcp/src/http.ts",
+    "mcp:eval": "bun --env-file=.env apps/mcp/eval/run.ts",
     "dev:catalog-website": "bun run --filter @sw-catalog/catalog-website dev",
     "crawl": "bun --env-file=.env apps/crawler/src/index.ts crawl",
     "crawl:software": "bun --env-file=.env apps/crawler/src/index.ts crawl-software",
