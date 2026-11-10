@@ -38,6 +38,8 @@ const router = createBrowserRouter([
       { path: "publishers/:id", lazy: async () => ({ Component: (await import("./pages/PublisherDetail.tsx")).PublisherDetail }) },
       { path: "publishers/:id/modifica", lazy: async () => ({ Component: (await import("./pages/PublisherForm.tsx")).PublisherForm }) },
       { path: "richieste", lazy: async () => ({ Component: (await import("./pages/Requests.tsx")).Requests }) },
+      { path: "liste", lazy: async () => ({ Component: (await import("./pages/Vocabularies.tsx")).VocabulariesList }) },
+      { path: "liste/:id", lazy: async () => ({ Component: (await import("./pages/Vocabularies.tsx")).VocabularyDetail }) },
     ],
   },
   // Vecchi percorsi della dashboard, prima dell'area /dashboard

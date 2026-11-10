@@ -152,7 +152,8 @@ Tutte prese il 9 novembre 2026, tranne D11 che resta facoltativa.
 |---|---|---|---|---|
 | **Anagrafica IndicePA** | Enti, tipologia, PEC (`pec.txt`), siti istituzionali | `developers.italia.it-data/ipa-to-elasticsearch` → ES `indicepa_pec`; CSV in onboarding-italia | **Nel monorepo**: job di sync → Postgres `ipa_entities`. Consultabile dalla dashboard, non modificabile (la fonte è ufficiale); eventuali correzioni manuali (es. sito errato) in una tabella di override gestita dalla dashboard | È dominio del catalogo: onboarding, verifica e pagine PA |
 | **Tassonomie dello standard publiccode** | Categorie, scope, `developmentStatus`, `softwareType`, lingue | `publiccode_categories.yml`, `publiccode_scopes.yml`, `development_status.yml`, `languages.yml`; label ricopiate a mano in `catalog-website/src/utils/i18n.ts` | **Codice versionato** (`packages/reference-data` o `shared`), generato dai vocabolari di `publiccode-json-schema` / dello standard, con label it/en | Cambiano con lo standard, non per scelta editoriale: servono versionamento e review |
-| **Liste editoriali del catalogo** | Misure e beneficiari PNRR, tipologie di software PA, testi e FAQ del catalogo | `pnrr_measures.yml`, `pnrr_targets.yml`, `software_pa_types.yml`, `faq.yml` | **DB + CRUD nella dashboard**: tabella generica di vocabolari (chiave, label it/en, ordine, attivo) con seed iniziale dai yml | Le modifica la redazione, non uno sviluppatore |
+| **Liste editoriali del catalogo** | Misure e beneficiari PNRR, tipologie di software PA | `pnrr_measures.yml`, `pnrr_targets.yml`, `software_pa_types.yml` | ✅ **DB + CRUD nella dashboard**: tabelle `vocabularies` e `vocabulary_terms` (chiave, label it/en, ordine, attivo) con seed iniziale dai yml | Le modifica la redazione, non uno sviluppatore |
+| **FAQ e contenuti** | FAQ sul riuso, testi | `faq.yml` | **Al CMS del nuovo sito** developers.italia.it, non nel catalogo (decisione del 10 novembre 2026) | Sono contenuti editoriali del sito |
 | **Community GitHub** | Team, membri, lista tecnologie, issue *help wanted* / Hacktoberfest | `developers.italia.it-data/github_importer.rb` (ogni ora) | **Fuori dal perimetro del catalogo**: resta nel repo dati o passa al nuovo sito (`developers-italia-website-dato` / DatoCMS) | Serve alle pagine community del sito, non al catalogo. Eventuale evoluzione futura: issue *help wanted* dei **software del catalogo** nella scheda software |
 | **Catalogo delle API** | Elenco delle OpenAPI della PA | `_data/apis.yml` | **Al nuovo sito** | Non riguarda il software a riuso |
 
@@ -198,7 +199,7 @@ Ordine pensato per ridurre il rischio. La **Fase 2 (indexer)** viene prima dell'
   - accesso alla dashboard: `dashboard_users`, `magic_link_tokens`, `dashboard_sessions`
   - da aggiungere: `api_keys` per i client macchina della v2 (D5): nome, prefisso visibile, hash, scope, creata da, ultimo uso, scadenza, revoca
   - anagrafica: `ipa_entities`
-  - mancano i vocabolari editoriali (D13)
+  - liste editoriali (D13): `vocabularies`, `vocabulary_terms` ✅
 - [x] **Sync IndicePA** (sostituisce `ipa-to-elasticsearch` di developers.italia.it-data e il CSV di onboarding-italia): `bun run ipa:sync` (`apps/api/src/jobs/sync-ipa.ts`) legge il dataset "Enti" dall'API CKAN degli open data (23.771 enti, PEC = email con tipo `Pec`), upsert con `jsonb_to_recordset` in una transazione, poi rimuove gli enti spariti tranne quelli citati da una richiesta di onboarding; si ferma se arrivano meno di 1.000 enti. Ricerca per nome, codice IPA o codice fiscale in `GET /v2/ipa-entities?q=`. Restano da fare il workflow e gli override:
   - job che scarica gli open data IndicePA (enti, PEC, siti istituzionali, codice fiscale) e fa l'upsert in `ipa_entities` dentro una transazione: niente finestre senza dati (chiude **B11**)
   - codice fiscale incluso, così la ricerca per CF funziona (chiude **B12**)
@@ -212,7 +213,8 @@ Ordine pensato per ridurre il rischio. La **Fase 2 (indexer)** viene prima dell'
 - [ ] **Censimento**: per ogni file di `_data/*.yml` del vecchio sito e di `developers.italia.it-data`, chi lo usa oggi (vecchio sito, catalogo-software, nuovo sito) e chi lo modifica
 - [x] **Decisione su D13**: approvata la proposta per gruppo (tabella al §3)
 - [ ] Tassonomie dello standard → `packages/reference-data` generato dai vocabolari di `publiccode-json-schema`, con label it/en; `catalog-website/src/utils/i18n.ts` le importa invece di ricopiarle a mano
-- [ ] Liste editoriali (PNRR, tipologie di software PA, FAQ del catalogo) → tabella di vocabolari + seed dai yml attuali + CRUD nella dashboard + endpoint `/v2/vocabularies`
+- [x] Liste editoriali (misure e beneficiari PNRR, tipologie di software PA) → tabelle `vocabularies`/`vocabulary_terms`, seed dai yml attuali copiati in `packages/db/seed/vocabularies/` (`bun run db:seed:vocabularies`, idempotente), CRUD in `/dashboard/liste` (aggiungi, modifica, riordina, disattiva, elimina; ogni scrittura in `audit_events`), `GET /v2/vocabularies` e `/v2/vocabularies/:id` pubblici con le sole voci attive. Le **FAQ** non sono riportate: andranno nel CMS del nuovo sito
+- [ ] Il catalogo legge misure e beneficiari PNRR da `/v2/vocabularies` invece delle liste in `catalog-website/src/utils/i18n.ts`
 - [ ] Community GitHub e catalogo delle API: concordare con chi gestisce il nuovo sito dove spostarli; non vanno nel catalogo
 
 ### Fase 1c: Validazione `publiccode.yml` (D3)
@@ -264,7 +266,7 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
 - [x] Modalità `--dry-run` che scrive il file bulk; report finale (documenti per tipo, YAML illeggibili esclusi, errori del bulk)
 - [x] Verifica in locale: 576 software + 104 amministrazioni, come in produzione; stesse prime cinque categorie con gli stessi conteggi
 - [x] `.github/workflows/nightly.yml`: crawl e poi index, cron notturno + `workflow_dispatch`, spento finché non si imposta `NIGHTLY_ENABLED=true`
-- [ ] Aggiornare `apps/api/openapi/v2/openapi.yaml` con gli endpoint della dashboard (`/auth`, `/ipa-entities`, `/onboarding-requests`, `/third-party-requests`, DELETE, `/software/third-party`, `/stats`, `/health`, `/job-runs`)
+- [ ] Aggiornare `apps/api/openapi/v2/openapi.yaml` con gli endpoint della dashboard (`/auth`, `/ipa-entities`, `/onboarding-requests`, `/third-party-requests`, DELETE, `/software/third-party`, `/stats`, `/health`, `/job-runs`, `/vocabularies`)
 - [ ] Riattivare le action quando esistono DB e OpenSearch di produzione: trigger push/PR in `ci.yml` e cron in `nightly.yml` (oggi commentati), poi `NIGHTLY_ENABLED=true`
 - [ ] **Cutover dell'indice**. In produzione `developers_italia_it` è **già un alias** (Searchyll lo sposta a ogni build), quindi non serve cancellare nulla:
   1. togliere `ELASTICSEARCH_PASS` dalla Action di developers.italia.it, così Searchyll e il bulk di Jekyll smettono di scrivere;
@@ -395,7 +397,7 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
   - software: elenco e ricerca, YAML del `publiccode.yml`, attiva/disattiva con motivazione, alias, analysis, log, pulsante "ri-crawla" (`crawl-software`)
   - publisher/amministrazioni: dati, code hosting (org o singolo repo), collegamento a `ipa_entities`, override dei dati IndicePA
   - cataloghi e sorgenti (driver, URL, argomenti JSONPath)
-  - vocabolari editoriali (Fase 1b)
+  - ~~vocabolari editoriali (Fase 1b)~~ ✅ `/dashboard/liste`
   - consultazione dei log; gestione dei webhook
 - [ ] **Area pubblica, onboarding PA** (sostituisce onboarding-italia, chiude **S3**, **S4** e **S5**). **Fatto il flusso standard** (home della dashboard, `POST /v2/onboarding-requests`, conferma da `/onboarding/conferma`, coda in `/dashboard/richieste` con approvazione o rifiuto degli ADMIN, telefono facoltativo); restano i template MJML. Il **fast onboarding GitHub non viene riportato**: ogni adesione va approvata via PEC dal team di controllo:
   - flusso standard: form → controllo IPA/PEC su `ipa_entities` → richiesta `PENDING` → mail alla PEC con token monouso e scadenza → conferma o rifiuto → publisher creato o aggiornato dall'API

@@ -14,3 +14,4 @@ export function getDb(databaseUrl = process.env.DATABASE_URL): PrismaClient {
   return client;
 }
 export * from "./publisher-match.ts";
+export * from "./vocabulary-seed.ts";

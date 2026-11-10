@@ -15,7 +15,7 @@ Contesto e piano (l'architettura obiettivo è disegnata in [new-plan.md](new-pla
 | `apps/crawler` | `@sw-catalog/crawler` | **funzionante**: GitHub, GitLab (anche su domini propri), Bitbucket, Gitea/Forgejo; senza vitalità | `publiccode-crawler` (Go) |
 | `apps/indexer` | `@sw-catalog/indexer` | **funzionante**: indice versionato e swap dell'alias | `scripts/get-*.js` + `_bulk` di `developers.italia.it` |
 | `apps/catalog-website` | `@sw-catalog/catalog-website` | **funzionante** (copiato da `catalogo-software`) | — |
-| `apps/dashboard` | `@sw-catalog/dashboard` | **area pubblica**: onboarding delle PA con conferma via PEC, richiesta di software di terze parti; **area riservata `/dashboard`** (magic link): cruscotto con stato degli strumenti e statistiche, software, amministrazioni con i loro software, coda delle richieste, CRUD per gli ADMIN ([dettagli](apps/dashboard/README.md)) | `onboarding-italia` + issue GitHub per software di terze parti |
+| `apps/dashboard` | `@sw-catalog/dashboard` | **area pubblica**: onboarding delle PA con conferma via PEC, richiesta di software di terze parti; **area riservata `/dashboard`** (magic link): cruscotto con stato degli strumenti e statistiche, software, amministrazioni, liste editoriali con i loro software, coda delle richieste, CRUD per gli ADMIN ([dettagli](apps/dashboard/README.md)) | `onboarding-italia` + issue GitHub per software di terze parti |
 | `packages/db` | `@sw-catalog/db` | schema Prisma 7, migration, client, import dai dati di produzione ([schema e relazioni](packages/db/README.md)) | modelli GORM dell'API |
 | `packages/publiccode-validator` | `@sw-catalog/publiccode-validator` | regole del catalogo sopra `publiccode-schema` | `validateFile` del crawler Go |
 | `packages/shared` | `@sw-catalog/shared` | tipi dell'API v2, normalizzazione degli URL | — |
@@ -34,6 +34,7 @@ bun run infra:mail                 # mailpit: SMTP :1025, UI http://localhost:80
 bun run db:migrate:deploy          # crea le tabelle
 bun run db:import                  # publisher e software dall'API pubblica di produzione
 bun run ipa:sync                   # anagrafica IndicePA (enti e PEC) per l'onboarding
+bun run db:seed:vocabularies       # liste editoriali (misure e beneficiari PNRR, tipologie di PA)
 bun run db:studio                  # Prisma Studio: http://localhost:5555
 
 bun run dev:api                    # http://localhost:3001/v2/status
@@ -56,7 +57,7 @@ Note:
 
 ## API: versioni
 
-- **`/v2`**: la versione principale. Contratto design-first in [apps/api/openapi/v2/openapi.yaml](apps/api/openapi/v2/openapi.yaml), codice in `apps/api/src/v2/`. Paginazione `page[size]` + `page[number]` (con totale, per la dashboard) oppure `page[after]` (cursore, per crawler e indexer). Letture pubbliche; scritture con `Authorization: Bearer <token>` (client macchina, token in `API_TOKENS`, provvisorio) oppure con la sessione di un ADMIN della dashboard. Endpoint della dashboard: `/v2/auth/*` (magic link), `/v2/ipa-entities`, `/v2/onboarding-requests`, `/v2/third-party-requests`, `/v2/stats` e `/v2/health` (cruscotto), `/v2/job-runs` (esecuzioni di crawler, indexer e sync IndicePA).
+- **`/v2`**: la versione principale. Contratto design-first in [apps/api/openapi/v2/openapi.yaml](apps/api/openapi/v2/openapi.yaml), codice in `apps/api/src/v2/`. Paginazione `page[size]` + `page[number]` (con totale, per la dashboard) oppure `page[after]` (cursore, per crawler e indexer). Letture pubbliche; scritture con `Authorization: Bearer <token>` (client macchina, token in `API_TOKENS`, provvisorio) oppure con la sessione di un ADMIN della dashboard. Endpoint della dashboard: `/v2/auth/*` (magic link), `/v2/ipa-entities`, `/v2/onboarding-requests`, `/v2/third-party-requests`, `/v2/stats` e `/v2/health` (cruscotto), `/v2/job-runs` (esecuzioni di crawler, indexer e sync IndicePA), `/v2/vocabularies` (liste editoriali, lettura pubblica).
 - **`/v1`**: compatibilità con `developers-italia-api` (Go) per i client attuali durante la migrazione. Contratto di riferimento in [apps/api/openapi/v1/open-catalog-api.oas.yaml](apps/api/openapi/v1/open-catalog-api.oas.yaml), codice in `apps/api/src/v1/`. Verrà dichiarata deprecata dopo il cutover.
 
 ## Comandi
@@ -66,6 +67,7 @@ Note:
 | `bun run typecheck` / `bun run test` | su tutti i workspace |
 | `bun run db:migrate:deploy` / `db:migrate` / `db:generate` / `db:validate` | Prisma (il `.env` della radice viene letto da `prisma.config.ts`) |
 | `bun run db:import [--only publishers\|software] [--limit N]` | importa i dati da un'API v1 (default produzione) |
+| `bun run db:seed:vocabularies [--force] [--dry-run]` | carica le liste editoriali da `packages/db/seed/vocabularies/`; aggiunge solo le voci nuove, `--force` riporta etichette e ordine a quelli dei file |
 | `bun run ipa:sync` | scarica gli enti dagli open data IndicePA e aggiorna `ipa_entities` in una transazione |
 | `bun run crawl [--publisher <id\|IPA>]... [--limit N] [--dry-run]` | crawler |
 | `bun run crawl:software <id\|url> <publisher> [--dry-run]` | crawl di un singolo software |

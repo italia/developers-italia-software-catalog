@@ -20,6 +20,7 @@
     "db:migrate:deploy": "bun run --filter @sw-catalog/db migrate:deploy",
     "db:import": "bun --env-file=.env packages/db/scripts/import-from-api.ts",
     "db:sync-publishers": "bun --env-file=.env packages/db/scripts/sync-publishers.ts",
+    "db:seed:vocabularies": "bun --env-file=.env packages/db/scripts/seed-vocabularies.ts",
     "db:studio": "docker compose --profile studio up -d --wait prisma-studio && echo \"Prisma Studio: http://localhost:${PRISMA_STUDIO_PORT:-5555}\"",
     "db:studio:stop": "docker compose --profile studio stop prisma-studio",
     "dev:api": "bun --env-file=.env --watch apps/api/src/index.ts",

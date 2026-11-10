@@ -30,6 +30,7 @@ Serve una sessione: possono entrare gli indirizzi di `DASHBOARD_ALLOWED_EMAIL_DO
 | `/dashboard/software/terze-parti` | Aggiunta diretta di un software di terze parti: il repository diventa un code hosting "singolo repository" di un'organizzazione non PA, esistente o nuova; se il `publiccode.yml` è valido il software viene creato subito |
 | `/dashboard/publishers` | Tabella delle amministrazioni; "Nuova organizzazione", modifica ed elimina su ogni riga |
 | `/dashboard/publishers/:id` (`/modifica`) | Dettaglio con code hosting e **tabella dei software pubblicati**; form con ricerca IndicePA, code hosting (organizzazione o singolo repository), stato |
+| `/dashboard/liste` (`/:id`) | **Liste editoriali** del catalogo (misure e beneficiari PNRR, tipologie di PA): gli ADMIN aggiungono, modificano, riordinano, disattivano ed eliminano le voci e cambiano nome e descrizione della lista. Le voci disattivate restano in dashboard ma spariscono dalla lettura pubblica (`GET /v2/vocabularies/:id`). Le FAQ e gli altri contenuti stanno nel CMS del nuovo sito |
 | `/dashboard/richieste` | Coda delle richieste di onboarding e di terze parti, con filtro per stato; gli ADMIN approvano o rifiutano (con nota, che arriva per email al richiedente delle terze parti) |
 
 Ogni cella con un valore utile (nome, URL, codice IPA, email, ID) ha il pulsante **copia**, visibile al passaggio del mouse o con il focus da tastiera (sempre visibile sui dispositivi touch). Le azioni di modifica sono nascoste ai VIEWER, e l'API rifiuta comunque le loro scritture con 403.

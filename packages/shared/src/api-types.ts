@@ -228,3 +228,33 @@ export interface StatsDto {
   };
   quality: QualityItemDto[];
 }
+
+// ---------------------------------------------------------------------------
+// Liste editoriali (D13): misure e beneficiari PNRR, tipologie di PA
+// ---------------------------------------------------------------------------
+
+export interface VocabularyTermDto {
+  id: string;
+  /** Valore stabile usato da chi legge la lista */
+  key: string;
+  /** Senza etichetta si mostra la chiave */
+  labelIt: string | null;
+  labelEn: string | null;
+  position: number;
+  active: boolean;
+  updatedAt: string;
+}
+
+export interface VocabularyDto {
+  id: string;
+  name: string;
+  description: string | null;
+  termCount: number;
+  activeTermCount: number;
+  updatedAt: string;
+}
+
+export interface VocabularyDetailDto extends VocabularyDto {
+  /** In ordine; le voci disattivate solo con ?all=true (utenti della dashboard) */
+  terms: VocabularyTermDto[];
+}

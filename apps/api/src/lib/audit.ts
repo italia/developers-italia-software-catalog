@@ -5,7 +5,7 @@ import type { AuthVars } from "./session.ts";
 type Db = Pick<Prisma.TransactionClient, "auditEvent">;
 
 export interface AuditInput {
-  entityType: "software" | "publishers" | "onboarding_requests" | "third_party_requests" | "dashboard_users";
+  entityType: "software" | "publishers" | "onboarding_requests" | "third_party_requests" | "dashboard_users" | "vocabularies";
   entityId: string;
   action: string;
   actorType?: "SYSTEM" | "DASHBOARD_USER" | "REQUESTER" | "GITHUB";

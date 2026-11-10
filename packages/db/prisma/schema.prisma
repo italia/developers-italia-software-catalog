@@ -448,3 +448,44 @@ model JobRun {
   @@index([job, startedAt])
   @@map("job_runs")
 }
+
+// ---------------------------------------------------------------------------
+// Parte 5 — liste editoriali del catalogo (D13), gestite dalla dashboard
+// ---------------------------------------------------------------------------
+
+/// Una lista editoriale del catalogo (misure e beneficiari PNRR, tipologie di PA). Le liste
+/// sono definite dal seed (bun run db:seed:vocabularies), perché il codice che le usa ne
+/// conosce l'id; dalla dashboard si modificano nome, descrizione e voci. Le tassonomie dello
+/// standard publiccode stanno nel codice, FAQ e contenuti nel CMS del nuovo sito.
+model Vocabulary {
+  /// Slug stabile, es. pnrr-measures
+  id          String   @id
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  terms VocabularyTerm[]
+
+  @@map("vocabularies")
+}
+
+model VocabularyTerm {
+  id           String   @id @default(uuid())
+  vocabularyId String   @map("vocabulary_id")
+  /// Valore stabile usato da chi legge la lista (es. "1.4.3", il tag PNRR/Misura/1.4.3 nei features)
+  key          String
+  /// Senza etichetta si mostra la chiave
+  labelIt      String?  @map("label_it")
+  labelEn      String?  @map("label_en")
+  position     Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  vocabulary Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+
+  @@unique([vocabularyId, key])
+  @@index([vocabularyId, position])
+  @@map("vocabulary_terms")
+}

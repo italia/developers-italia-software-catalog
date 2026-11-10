@@ -141,6 +141,7 @@ export function DashboardLayout() {
           { to: "/dashboard/software", label: "Software" },
           { to: "/dashboard/publishers", label: "Amministrazioni" },
           { to: "/dashboard/richieste", label: "Richieste" },
+          { to: "/dashboard/liste", label: "Liste" },
         ]}
         tools={<UserTools />}
       />

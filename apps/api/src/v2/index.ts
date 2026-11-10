@@ -11,6 +11,7 @@ import { publishers } from "./publishers.ts";
 import { software } from "./software.ts";
 import { stats } from "./stats.ts";
 import { thirdParty } from "./third-party.ts";
+import { vocabularies } from "./vocabularies.ts";
 
 // API v2: la versione principale del nuovo catalogo.
 //
@@ -32,3 +33,4 @@ v2.route("/third-party-requests", thirdParty);
 v2.route("/job-runs", jobRuns);
 v2.route("/stats", stats);
 v2.route("/health", health);
+v2.route("/vocabularies", vocabularies);

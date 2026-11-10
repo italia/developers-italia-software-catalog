@@ -43,6 +43,21 @@ describe("autorizzazioni (senza database)", () => {
     expect(patch.status).toBe(401);
   });
 
+  test("liste editoriali: scritture riservate", async () => {
+    const json = { "Content-Type": "application/json" };
+    for (const [method, path, body] of [
+      ["PATCH", "/v2/vocabularies/pnrr-measures", "{}"],
+      ["POST", "/v2/vocabularies/pnrr-measures/terms", '{"key":"x"}'],
+      ["PATCH", "/v2/vocabularies/pnrr-measures/terms/x", "{}"],
+      ["DELETE", "/v2/vocabularies/pnrr-measures/terms/x", undefined],
+      ["PUT", "/v2/vocabularies/pnrr-measures/order", '{"termIds":[]}'],
+    ] as const) {
+      expect((await app.request(path, { method, headers: json, body })).status).toBe(401);
+    }
+    // le voci disattivate solo con la sessione
+    expect((await app.request("/v2/vocabularies/pnrr-measures?all=true")).status).toBe(401);
+  });
+
   test("le liste delle richieste sono riservate", async () => {
     expect((await app.request("/v2/onboarding-requests")).status).toBe(401);
     expect((await app.request("/v2/third-party-requests")).status).toBe(401);
