@@ -1,0 +1,22 @@
+{
+  "name": "@sw-catalog/mcp",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "bin": {
+    "sw-catalog-mcp": "./src/stdio.ts"
+  },
+  "scripts": {
+    "start": "bun src/stdio.ts",
+    "start:http": "bun src/http.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@sw-catalog/shared": "workspace:*",
+    "publiccode-schema": "^0.2.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  }
+}

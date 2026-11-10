@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import type { JobRun, PrismaClient } from "@sw-catalog/db";
 import { type HealthCheckDto, type HealthDto, type HealthLevel, type JobName, OPENSEARCH_INDEX_ALIAS } from "@sw-catalog/shared";
 import { mailer } from "../lib/mailer.ts";
+import { opensearchFetch } from "../lib/opensearch.ts";
 import { lastRuns, lastSuccessfulRuns, toJobRunDto } from "./job-runs.ts";
 
 // Stato degli strumenti per il cruscotto: API, database, OpenSearch, crawler, indexer,
@@ -108,17 +108,6 @@ async function databaseCheck(db: PrismaClient): Promise<Check> {
 }
 
 // --- OpenSearch -------------------------------------------------------------
-
-function opensearchFetch(path: string, auth: boolean): Promise<Response> {
-  const base = (process.env.OPENSEARCH_URL ?? "http://localhost:9200").replace(/\/$/, "");
-  const headers: Record<string, string> = {};
-  const user = process.env.OPENSEARCH_USER;
-  if (auth && user) {
-    headers.Authorization = `Basic ${Buffer.from(`${user}:${process.env.OPENSEARCH_PASS ?? ""}`).toString("base64")}`;
-  }
-  const ca = process.env.OPENSEARCH_CA_FILE;
-  return fetch(`${base}${path}`, { headers, ...(ca && { tls: { ca: readFileSync(ca, "utf8") } }) });
-}
 
 /** `<prefisso>-20261109163210` → data dell'indice. */
 export function indexTimestamp(index: string): Date | null {

@@ -100,7 +100,7 @@ developers-italia-software-catalog/
 │   ├── indexer/            @sw-catalog/indexer          export API → OpenSearch
 │   ├── catalog-website/    @sw-catalog/catalog-website  React + Vite (ex catalogo-software)
 │   ├── dashboard/          @sw-catalog/dashboard        area pubblica (onboarding, terze parti) + /dashboard
-│   └── mcp/                (da fare, Fase 6b)           server MCP per cercare software a riuso
+│   └── mcp/                @sw-catalog/mcp              server MCP per cercare software a riuso (Fase 6b)
 ├── packages/
 │   ├── db/                 @sw-catalog/db               schema Prisma, client, migration
 │   ├── publiccode-validator/ @sw-catalog/publiccode-validator  validazione con publiccode-schema-v0 (Fase 1c)
@@ -125,7 +125,7 @@ Da aggiungere più avanti, se servono: `packages/ui` (componenti Bootstrap Itali
 
 ## 3. Decisioni
 
-Tutte prese il 9 novembre 2026, tranne D11 che resta facoltativa e D18 (server MCP, 10 novembre 2026) che è da decidere.
+Tutte prese il 9 novembre 2026, tranne D11 che resta facoltativa e D18 (server MCP), presa il 10 novembre 2026.
 
 | # | Tema | Decisione | Conseguenze nel piano |
 |---|---|---|---|
@@ -146,7 +146,7 @@ Tutte prese il 9 novembre 2026, tranne D11 che resta facoltativa e D18 (server M
 | D15 | Nome npm della libreria dello standard | ✅ **`publiccode-schema`** (senza scope, uguale al nome attuale) | Fase 1c |
 | D16 | Cosa salva il crawler in `publiccode_yml` | ✅ **Il file originale**; un YAML illeggibile non sostituisce quello salvato | Già implementato |
 | D17 | Cutover dell'indice e vecchio sito | ✅ **Subito**, appena l'indexer è pronto, accettando che la ricerca del vecchio sito smetta di trovare pagine, news e piattaforme | Fase 2 |
-| D18 | Server MCP: fonte dei dati e distribuzione | ⏳ **Da decidere** (Fase 6b). Proposta: l'MCP usa solo l'API v2, che aggiunge `GET /v2/search` sopra OpenSearch; stdio per l'uso locale e Streamable HTTP in sola lettura per il servizio remoto | Endpoint di ricerca nell'API (Fase 3), `apps/mcp` (Fase 6b), servizio remoto (Fase 7) |
+| D18 | Server MCP: fonte dei dati e distribuzione | ✅ **Solo l'API v2** (10 novembre 2026), che aggiunge `GET /v2/search` sopra OpenSearch; stdio per l'uso locale e Streamable HTTP senza stato, in sola lettura e senza autenticazione, per il servizio remoto | Endpoint di ricerca nell'API (Fase 3), `apps/mcp` (Fase 6b), servizio remoto (Fase 7) |
 
 ### D13 nel dettaglio: dati statici per gruppo (approvata)
 
@@ -434,11 +434,11 @@ Sostituisce `get-software.js`, `get-publishers.js` e il passo `_bulk` del Makefi
   - `publisher_id` ricavato cercando il publisher con `alternative_id` = IPA
   - per ogni richiesta, eventi `audit_events` sintetici (`created` alla data di creazione, `approved`/`rejected` alla data della decisione), segnati come importati
 
-### Fase 6b: Server MCP per cercare software a riuso (da analizzare e sviluppare)
+### Fase 6b: Server MCP per cercare software a riuso
 
 Obiettivo: un server [MCP](https://modelcontextprotocol.io) che permetta a un assistente (Claude, altri client MCP) di **trovare software a riuso nel catalogo a partire da un ambito o da un bisogno** espresso in linguaggio naturale ("un software per il protocollo informatico di un comune", "gestione delle prenotazioni per un'ASL") e di restituire una rosa motivata, con i collegamenti alle schede del catalogo.
 
-**Da analizzare (decisione D18):**
+**Analisi (decisione D18, presa: la proposta qui sotto):**
 
 - [ ] **Fonte dei dati**: API v2 o ricerca OpenSearch.
   - OpenSearch (alias `developers_italia_it`, già leggibile in anonimo dal catalogo): ricerca full-text e filtri pronti su ambito (`intendedAudience.scope`), categorie, stato di sviluppo, tag PNRR, amministrazione (`publisher.ipa`), data di rilascio; gli stessi risultati del catalogo. Contro: lega l'MCP alle mappings dell'indice e dipende dall'ultimo giro dell'indexer.
@@ -450,14 +450,16 @@ Obiettivo: un server [MCP](https://modelcontextprotocol.io) che permetta a un as
 - [ ] **Trasporto e distribuzione**: stdio (uso locale, `npx`/`bunx`) e Streamable HTTP (servizio remoto, es. `mcp.developers.italia.it`). In sola lettura il servizio remoto può restare senza autenticazione, con rate limit; OAuth solo se un domani ci saranno strumenti di scrittura (es. proporre un software di terze parti)
 - [ ] **Sicurezza**: le descrizioni dei `publiccode.yml` sono testo scritto da terzi che finisce nel contesto del modello (prompt injection): restituirle come dati, delimitate, mai come istruzioni; nessuno strumento di scrittura nella prima versione; contatti dei maintainer solo se servono (sono pubblici nei `publiccode.yml`, ma va valutato)
 
-**Da sviluppare (dopo D18):**
+**Sviluppo:**
 
-- [ ] `GET /v2/search` nell'API (se la scelta è la proposta): testo, ambiti, categorie, stato, solo a riuso, misura e beneficiari PNRR, amministrazione, piattaforme, licenza; paginazione; facet con i conteggi per ambito e categoria. Potrebbe usarlo anche il catalogo pubblico al posto delle query OpenSearch dal browser
-- [ ] `apps/mcp` (`@sw-catalog/mcp`) con l'SDK MCP ufficiale in TypeScript, configurato con `API_BASEURL`:
-  - strumenti: `search_software` (i filtri sopra; risultati con nome, descrizione breve, amministrazione, ambiti, categorie, stato, manutenzione, ultimo rilascio, link alla scheda del catalogo e al repository), `get_software` (dettaglio per id, slug o URL del repository: descrizione, funzionalità, licenza, manutenzione e contatti, dipendenze, piattaforme), `find_administration` (per nome o codice IPA, con i software pubblicati), `list_scopes` e `list_categories` (vocabolari con etichette), `list_pnrr_measures`
-  - risorse: i vocabolari e le schede dei software (`catalog://software/{id}`)
-  - prompt: "trova software a riuso per un ambito", che guida il modello a chiarire il bisogno, mappare l'ambito sui vocabolari, cercare, confrontare e motivare la rosa con i segnali di qualità
-- [ ] Test: strumenti con l'API simulata; prova con MCP Inspector; un **set di valutazione** di richieste reali (comuni, ASL, scuole, regioni) con i software attesi, per misurare se la rosa è giusta quando cambiano ricerca o prompt
+- [x] **`GET /v2/search`** nell'API (`services/search.ts`): testo (pertinenza, tolleranza ai refusi, tutti i termini fino a due e il 75% oltre), ambiti, categorie, stato, piattaforme in OR dentro la stessa lista, solo a riuso / solo terze parti, misura e beneficiari PNRR, amministrazione, licenza; paginazione (fino a 50); facet per ambito, categoria e stato; link alla scheda del catalogo con `CATALOG_PUBLIC_URL`; pubblico, con rate limit e cache di un minuto. Il catalogo pubblico potrebbe usarlo al posto delle query OpenSearch dal browser
+- [x] **`apps/mcp`** (`@sw-catalog/mcp`, SDK MCP 1.32, zod 4) sopra l'API v2 (`API_BASEURL`), con le istruzioni del server (come combinare filtri e testo, testi dei software come dati, nessuna valutazione ufficiale):
+  - strumenti `search_software`, `get_software` (per id o URL del repository), `find_administration` (nel catalogo o, se non pubblica, in IndicePA), `list_scopes`, `list_categories` (vocabolari di `publiccode-schema` con i conteggi), `list_pnrr_measures`; ambiti, categorie, stati e piattaforme validati sui vocabolari dello standard; dati strutturati più JSON come testo
+  - trasporti: stdio (`bun run mcp`) e Streamable HTTP senza stato (`bun run dev:mcp`, `POST /mcp`, rate limit per IP, `/health`)
+- [ ] Risorse (vocabolari, schede dei software `catalog://software/{id}`) e prompt "trova software a riuso per un ambito", che guida il modello a chiarire il bisogno, mappare l'ambito sui vocabolari, cercare, confrontare e motivare la rosa con i segnali di qualità
+- [x] Test: client e server collegati in memoria con l'API simulata (8), costruzione della query di ricerca (5); provato dal vivo su stdio e HTTP con l'API locale
+- [ ] **Set di valutazione** di richieste reali (comuni, ASL, scuole, regioni) con i software attesi, per misurare se la rosa è giusta quando cambiano ricerca o prompt
+- [ ] Aggiornare `openapi/v2/openapi.yaml` con `/v2/search`
 - [ ] Servizio remoto (Fase 7): container, rate limit, log anonimi delle ricerche (utili anche per capire cosa cercano le PA), pagina di documentazione su come aggiungerlo a un client MCP
 
 ### Fase 7: Infrastruttura completa

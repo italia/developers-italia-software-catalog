@@ -318,3 +318,52 @@ export interface PubliccodeUpgradeDto {
   /** Validazione strict del file aggiornato contro `to` */
   validation: Pick<PubliccodeValidationDto, "valid" | "errors" | "warnings">;
 }
+
+// ---------------------------------------------------------------------------
+// Ricerca nel catalogo (GET /v2/search): la usano il server MCP e altri client
+// ---------------------------------------------------------------------------
+
+export interface SearchHitDto {
+  /** Id del software nell'API v2 (anche lo slug del catalogo) */
+  id: string;
+  name: string;
+  shortDescription: string | null;
+  /** Lingua della descrizione restituita (it, se c'è) */
+  descriptionLanguage: string | null;
+  /** Amministrazione nel cui code hosting il software è pubblicato */
+  publisher: { name: string; ipa: string | null } | null;
+  /** Software di titolarità di una PA (organisation.uri urn:x-italian-pa:… o IT.riuso.codiceIPA) */
+  reuse: boolean;
+  /** Codice IPA dichiarato nel publiccode.yml */
+  declaredIpa: string | null;
+  scopes: string[];
+  categories: string[];
+  developmentStatus: string | null;
+  softwareType: string | null;
+  maintenanceType: string | null;
+  license: string | null;
+  platforms: string[];
+  releaseDate: string | null;
+  /** Repository */
+  url: string | null;
+  landingURL: string | null;
+  /** Scheda nel catalogo pubblico, se CATALOG_PUBLIC_URL è impostato */
+  catalogUrl: string | null;
+  /** Punteggio di pertinenza di OpenSearch (solo con una ricerca testuale) */
+  score: number | null;
+}
+
+export interface SearchFacetDto {
+  value: string;
+  count: number;
+}
+
+export interface SearchResultDto {
+  data: SearchHitDto[];
+  meta: { total: number; page: number; size: number };
+  facets: {
+    scopes: SearchFacetDto[];
+    categories: SearchFacetDto[];
+    developmentStatuses: SearchFacetDto[];
+  };
+}

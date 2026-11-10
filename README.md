@@ -16,6 +16,7 @@ Contesto e piano (l'architettura obiettivo è disegnata in [new-plan.md](new-pla
 | `apps/indexer` | `@sw-catalog/indexer` | **funzionante**: indice versionato e swap dell'alias | `scripts/get-*.js` + `_bulk` di `developers.italia.it` |
 | `apps/catalog-website` | `@sw-catalog/catalog-website` | **funzionante** (copiato da `catalogo-software`): ricerca, scheda del software, pagine delle amministrazioni (`/pa`, `/pa/:ipa`); filtri PNRR dalle liste editoriali dell'API | — |
 | `apps/dashboard` | `@sw-catalog/dashboard` | **area pubblica**: onboarding delle PA con conferma via PEC, richiesta di software di terze parti; **area riservata `/dashboard`** (magic link): cruscotto con stato degli strumenti e statistiche, software, amministrazioni, liste editoriali con i loro software, coda delle richieste, CRUD per gli ADMIN ([dettagli](apps/dashboard/README.md)) | `onboarding-italia` + issue GitHub per software di terze parti |
+| `apps/mcp` | `@sw-catalog/mcp` | **server MCP** per cercare software a riuso da un assistente: `search_software`, `get_software`, `find_administration`, ambiti, categorie e misure PNRR, sopra l'API v2; stdio e Streamable HTTP ([dettagli](apps/mcp/README.md)) | — |
 | `packages/db` | `@sw-catalog/db` | schema Prisma 7, migration, client, import dai dati di produzione ([schema e relazioni](packages/db/README.md)) | modelli GORM dell'API |
 | `packages/publiccode-validator` | `@sw-catalog/publiccode-validator` | regole del catalogo sopra `publiccode-schema` | `validateFile` del crawler Go |
 | `packages/shared` | `@sw-catalog/shared` | tipi dell'API v2, normalizzazione degli URL | — |
@@ -57,7 +58,7 @@ Note:
 
 ## API: versioni
 
-- **`/v2`**: la versione principale. Contratto design-first in [apps/api/openapi/v2/openapi.yaml](apps/api/openapi/v2/openapi.yaml), codice in `apps/api/src/v2/`. Paginazione `page[size]` + `page[number]` (con totale, per la dashboard) oppure `page[after]` (cursore, per crawler e indexer). Letture pubbliche; scritture con `Authorization: Bearer <token>` (client macchina, token in `API_TOKENS`, provvisorio) oppure con la sessione di un ADMIN della dashboard. Endpoint della dashboard: `/v2/auth/*` (magic link), `/v2/ipa-entities`, `/v2/onboarding-requests`, `/v2/third-party-requests`, `/v2/stats` e `/v2/health` (cruscotto), `/v2/job-runs` (esecuzioni di crawler, indexer e sync IndicePA), `/v2/vocabularies` (liste editoriali, lettura pubblica), `/v2/software/:id/validation` e `/v2/software/:id/upgrade` (validazione per versione e aggiornamento del `publiccode.yml`, con `publiccode-schema` 0.2).
+- **`/v2`**: la versione principale. Contratto design-first in [apps/api/openapi/v2/openapi.yaml](apps/api/openapi/v2/openapi.yaml), codice in `apps/api/src/v2/`. Paginazione `page[size]` + `page[number]` (con totale, per la dashboard) oppure `page[after]` (cursore, per crawler e indexer). Letture pubbliche; scritture con `Authorization: Bearer <token>` (client macchina, token in `API_TOKENS`, provvisorio) oppure con la sessione di un ADMIN della dashboard. Endpoint della dashboard: `/v2/auth/*` (magic link), `/v2/ipa-entities`, `/v2/onboarding-requests`, `/v2/third-party-requests`, `/v2/stats` e `/v2/health` (cruscotto), `/v2/job-runs` (esecuzioni di crawler, indexer e sync IndicePA), `/v2/vocabularies` (liste editoriali, lettura pubblica), `/v2/search` (ricerca pubblica sopra OpenSearch con i filtri del catalogo e i conteggi per ambito e categoria), `/v2/software/:id/validation` e `/v2/software/:id/upgrade` (validazione per versione e aggiornamento del `publiccode.yml`, con `publiccode-schema` 0.2).
 - **`/v1`**: compatibilità con `developers-italia-api` (Go) per i client attuali durante la migrazione. Contratto di riferimento in [apps/api/openapi/v1/open-catalog-api.oas.yaml](apps/api/openapi/v1/open-catalog-api.oas.yaml), codice in `apps/api/src/v1/`. Verrà dichiarata deprecata dopo il cutover.
 
 ## Comandi
@@ -73,6 +74,7 @@ Note:
 | `bun run crawl:software <id\|url> <publisher> [--dry-run]` | crawl di un singolo software |
 | `bun run index [--dry-run] [--keep N]` | indexer OpenSearch |
 | `bun run dev:api` / `dev:dashboard` / `dev:catalog-website` | server di sviluppo |
+| `bun run mcp` / `dev:mcp` | server MCP su stdio (per un client in locale) / su Streamable HTTP (`http://localhost:3002/mcp`) |
 | `bun run db:studio` / `db:studio:stop` | avvia / ferma Prisma Studio nel compose: tabelle e valori del database su http://localhost:5555 |
 | `bun run infra:mail` / `infra:mail:stop` | avvia / ferma Mailpit (SMTP `localhost:1025`, UI http://localhost:8025); i messaggi restano dopo un riavvio |
 | `bun run mail:test [--to indirizzo]` | invia un'email di prova con la configurazione `SMTP_*` del `.env` e controlla che sia arrivata in Mailpit |

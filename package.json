@@ -25,6 +25,8 @@
     "db:studio:stop": "docker compose --profile studio stop prisma-studio",
     "dev:api": "bun --env-file=.env --watch apps/api/src/index.ts",
     "dev:dashboard": "bun run --filter @sw-catalog/dashboard dev",
+    "mcp": "bun --env-file=.env apps/mcp/src/stdio.ts",
+    "dev:mcp": "bun --env-file=.env --watch apps/mcp/src/http.ts",
     "dev:catalog-website": "bun run --filter @sw-catalog/catalog-website dev",
     "crawl": "bun --env-file=.env apps/crawler/src/index.ts crawl",
     "crawl:software": "bun --env-file=.env apps/crawler/src/index.ts crawl-software",
