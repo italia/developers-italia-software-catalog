@@ -46,6 +46,17 @@ bun run dev:dashboard              # http://localhost:5173 (area riservata: /das
 VITE_ELASTICSEARCH_URL=http://localhost:9200 VITE_USE_MOCK=false VITE_API_URL=http://localhost:3001/v2 bun run dev:catalog-website   # http://localhost:3000
 ```
 
+Dopo la prima configurazione, per il lavoro di tutti i giorni basta un comando:
+
+```sh
+bun run dev                        # container + API, dashboard, catalogo e MCP in un terminale; Ctrl+C ferma
+bun run dev --only api,dashboard   # solo alcuni servizi (api, dashboard, catalog, mcp)
+bun run dev --skip mcp             # tutti tranne alcuni
+bun run dev --no-infra             # senza avviare i container
+```
+
+Avvia Docker se è spento (su macOS), alza i container e aspetta Postgres e OpenSearch, poi avvia prima l'API e, quando risponde, gli altri servizi, con i log prefissati per servizio. Un servizio la cui porta è già occupata, per esempio perché è già aperto in un altro terminale, viene saltato. Ctrl+C ferma i processi ma lascia accesi i container (`bun run infra:down` per fermarli).
+
 Note:
 
 - Il compose è in due file: **`compose.yaml`** è la base con la sicurezza attiva (utilizzabile da sola su un server: `docker compose -f compose.yaml up -d`), **`compose.local.yaml`** aggiunge solo cose da sviluppo. In locale `COMPOSE_FILE` nel `.env` li unisce, quindi `docker compose …` e gli script `infra:*` li usano entrambi.
@@ -73,7 +84,8 @@ Note:
 | `bun run crawl [--publisher <id\|IPA>]... [--limit N] [--dry-run]` | crawler |
 | `bun run crawl:software <id\|url> <publisher> [--dry-run]` | crawl di un singolo software |
 | `bun run index [--dry-run] [--keep N]` | indexer OpenSearch |
-| `bun run dev:api` / `dev:dashboard` / `dev:catalog-website` | server di sviluppo |
+| `bun run dev [--only s,…] [--skip s,…] [--no-infra]` | tutto l'ambiente di sviluppo in un terminale: container, API, dashboard, catalogo e MCP (`scripts/dev.ts`) |
+| `bun run dev:api` / `dev:dashboard` / `dev:catalog-website` | un singolo server di sviluppo |
 | `bun run mcp` / `dev:mcp` | server MCP su stdio (per un client in locale) / su Streamable HTTP (`http://localhost:3002/mcp`) |
 | `bun run mcp:openrouter [--prompt] [--model id] "domanda"` | esempio: un assistente su OpenRouter che usa il server MCP per rispondere (serve `OPENROUTER_API_KEY` nel `.env`; a pagamento) |
 | `bun run mcp:eval [--json] [--min-pass N]` | valutazione della ricerca del server MCP sui casi di `apps/mcp/eval/cases.json` (serve l'API avviata) |
